@@ -1,0 +1,341 @@
+// Personalized Recommendation System — Database Schema
+// Stack: Prisma 7.3 + Neon Serverless PostgreSQL
+// Auth: BetterAuth (user, session, account, verification tables)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// =============================================================================
+// AUTH TABLES (BetterAuth required)
+// =============================================================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Custom fields for the recommendation system
+  handle   String  @unique /// @username handle, e.g. "techfounder42"
+  bio      String?
+  location String? /// Self-reported, not geocoded
+  website  String?
+
+  // Persona metadata — distinguishes LLM-generated personas from real users
+  isPersona     Boolean @default(false)
+  personaConfig Json?   /// Stores persona traits, interests, writing style for LLM generation
+
+  // Relations — Auth
+  sessions Session[]
+  accounts Account[]
+
+  // Relations — Social graph
+  followers Follow[] @relation("Following") // Users who follow this user
+  following Follow[] @relation("Follower")  // Users this user follows
+
+  // Relations — Content
+  posts   Post[]
+  likes   Like[]
+  reposts Repost[]
+
+  // Relations — Preferences & Ranking
+  topicPreferences     UserTopicPreference[]
+  algorithmPreferences AlgorithmPreference?
+  rankingExplanations  RankingExplanation[]
+
+  // Relations — Notifications
+  notificationsReceived Notification[] @relation("NotificationRecipient")
+  notificationsTriggered Notification[] @relation("NotificationActor")
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("verification")
+}
+
+// =============================================================================
+// SOCIAL GRAPH
+// =============================================================================
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId]) // Prevent duplicate follows
+  @@index([followerId])
+  @@index([followingId])
+  @@map("follow")
+}
+
+// =============================================================================
+// CONTENT
+// =============================================================================
+
+model Post {
+  id        String   @id @default(cuid())
+  content   String   /// Tweet text content (max 280 chars enforced at app level)
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Thread and reply structure
+  parentId    String? /// If set, this post is a reply to parentId
+  quotedPostId String? /// If set, this is a quote tweet of quotedPostId
+
+  // Denormalized engagement counts (updated via triggers or app logic)
+  likeCount   Int @default(0)
+  repostCount Int @default(0)
+  replyCount  Int @default(0)
+  viewCount   Int @default(0)
+
+  // Relations
+  author    User  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent    Post? @relation("PostReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies   Post[] @relation("PostReplies")
+  quotedPost Post? @relation("QuotedPosts", fields: [quotedPostId], references: [id], onDelete: SetNull)
+  quotedBy   Post[] @relation("QuotedPosts")
+
+  likes   Like[]
+  reposts Repost[]
+
+  // Topic classification
+  postTopics PostTopic[]
+
+  // Future-ready media support (deferred — text-only initially)
+  mediaAttachments MediaAttachment[]
+
+  // Ranking explanations
+  rankingExplanations RankingExplanation[]
+
+  // Notifications
+  notifications Notification[]
+
+  @@index([authorId])
+  @@index([parentId])
+  @@index([createdAt(sort: Desc)]) // Feed queries order by recency
+  @@map("post")
+}
+
+// =============================================================================
+// ENGAGEMENT
+// =============================================================================
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId]) // One like per user per post
+  @@index([postId])
+  @@map("like")
+}
+
+model Repost {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId]) // One repost per user per post
+  @@index([postId])
+  @@map("repost")
+}
+
+// =============================================================================
+// TOPICS & PREFERENCES
+// =============================================================================
+
+model Topic {
+  id          String @id @default(cuid())
+  name        String @unique /// Display name, e.g. "Technology"
+  slug        String @unique /// URL-safe identifier, e.g. "technology"
+  description String?
+
+  postTopics       PostTopic[]
+  userPreferences  UserTopicPreference[]
+
+  @@map("topic")
+}
+
+/// Junction table: many-to-many between Post and Topic
+model PostTopic {
+  id      String @id @default(cuid())
+  postId  String
+  topicId String
+
+  post  Post  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, topicId])
+  @@index([topicId])
+  @@map("post_topic")
+}
+
+/// Per-user topic interest weight. Used by the ranking engine.
+model UserTopicPreference {
+  id      String @id @default(cuid())
+  userId  String
+  topicId String
+  weight  Float  @default(0.5) /// Range: 0.0 (hide) to 1.0 (boost). Default 0.5 = neutral.
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, topicId])
+  @@map("user_topic_preference")
+}
+
+/// Global algorithm tuning knobs per user. Drives the preference-driven personalization layer.
+model AlgorithmPreference {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  // Weights range from 0.0 to 1.0
+  recencyWeight    Float @default(0.5) /// Higher = prefer newer posts
+  popularityWeight Float @default(0.5) /// Higher = prefer high-engagement posts
+  networkWeight    Float @default(0.5) /// Higher = prefer followed users over discovery
+  diversityWeight  Float @default(0.5) /// Higher = more topic diversity in feed
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("algorithm_preference")
+}
+
+// =============================================================================
+// RANKING & EXPLAINABILITY
+// =============================================================================
+
+/// Stores per-post ranking explanation for the "Why am I seeing this?" feature.
+model RankingExplanation {
+  id         String   @id @default(cuid())
+  postId     String
+  userId     String   /// The user whose feed this explanation is for
+  totalScore Float    /// Final ranking score
+  factors    Json     /// Breakdown: { inNetwork: 0.4, topicRelevance: 0.3, recency: 0.2, ... }
+  createdAt  DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("ranking_explanation")
+}
+
+// =============================================================================
+// NOTIFICATIONS
+// =============================================================================
+
+enum NotificationType {
+  LIKE
+  REPOST
+  REPLY
+  FOLLOW
+  MENTION
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  recipientId String /// User who receives the notification
+  actorId     String /// User who triggered it
+  postId      String? /// Related post (null for FOLLOW notifications)
+
+  recipient User  @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor     User  @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  post      Post? @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, read, createdAt(sort: Desc)])
+  @@map("notification")
+}
+
+// =============================================================================
+// MEDIA (Future-ready — text-only initially, schema in place for modesty policy)
+// =============================================================================
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  GIF
+}
+
+model MediaAttachment {
+  id               String    @id @default(cuid())
+  postId           String
+  url              String
+  type             MediaType
+  altText          String?   /// Accessible description — always visible to screen readers
+  modestySensitive Boolean   @default(true) /// Conservative default: blur unless explicitly safe
+  createdAt        DateTime  @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@map("media_attachment")
+}

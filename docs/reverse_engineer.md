@@ -24,7 +24,6 @@ Scan the repository and identify only the significant files.
 Ignore:
 node_modules, build artifacts, caches
 Lock files
-Generated code
 Styling-only files unless they affect behavior
 Define “significant” as:
 Files responsible for control flow, business logic, API handling, state management, data access, authentication/authorization, or core UI behavior.

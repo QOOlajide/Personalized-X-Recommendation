@@ -9,11 +9,11 @@ Read the project description and restate all requirements and constraints in you
 Break them down into clear, numbered functional and non-functional requirements.
 Highlight any implicit challenges or open questions that I should resolve before implementation.
 Map requirements to architecture and responsibilities
-For each requirement, describe what the app will need to do (features, flows, and key data entities).
+For each requirement in @Context.md, describe what the app will need to do (features, flows, and key data entities).
 Propose a high-level architecture (front end, back end, database, caching, background processing, integrations, etc.).
 Call out potential bottlenecks, data flows, and where we need strong reliability, security, and performance.
 Recommend tech stack (with my preferences)
-Propose a tech stack that fits the requirements, prioritizing tools I already use where appropriate:
+Propose a tech stack that fits each requirement, prioritizing tools I already use if appropriate:
 PostgreSQL
 TypeScript
 Redis

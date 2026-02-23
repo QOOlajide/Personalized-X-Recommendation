@@ -10,7 +10,7 @@ Implement an end-to-end ranking pipeline inspired by X’s open-sourced architec
 Build a preference-driven personalization layer that allows users to tune the algorithm using explicit controls (e.g., recency vs popularity, friends vs global, niche vs viral, tech vs politics vs culture).
 Create a synthetic social network seeded by LLM-generated personas (e.g., founders, journalists, meme accounts, traders, politicians), each with distinct writing styles, interests, and behavioral models. The system should generate tweets, threads, replies, quote tweets, and engagement that resemble real X dynamics.
 Develop a full-stack web application that mirrors the X experience, including home feed, profiles, follow graph, likes, reposts, replies, trends, and notifications. The feed should be powered entirely by your ranking engine and update live as preferences and engagement change.
-Challenges:
+Challenges (But must still be implemented):
 
 Balancing engagement optimization with diversity, freshness, and exploration to prevent filter bubbles, topic saturation, and popularity feedback loops inside the simulation.
 Designing realistic social dynamics and engagement cascades using LLM agents while preventing malicious behavior 0r spammy content.
