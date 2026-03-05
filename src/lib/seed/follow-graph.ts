@@ -51,7 +51,7 @@ const ARCHETYPE_AFFINITY: Partial<
   news_outlet: { journalist: 0.2, politician: 0.1 },
   politician: { journalist: 0.1, activist: 0.1, news_outlet: 0.1 },
   academic: { developer: 0.05, journalist: 0.05, islamic_scholar: 0.05 },
-  islamic_scholar: { academic: 0.05, activist: 0.05 },
+  islamic_scholar: { academic: 0.05 },
   activist: { journalist: 0.1, politician: 0.1 },
   artist: { musician: 0.1, comedian: 0.05 },
   musician: { artist: 0.1, comedian: 0.05 },
