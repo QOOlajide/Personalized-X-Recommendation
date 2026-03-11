@@ -1,9 +1,14 @@
 /**
- * Prisma client singleton configured for Neon serverless PostgreSQL.
+ * Prisma client singleton — Neon-first with local Postgres fallback.
  *
- * Uses @prisma/adapter-neon for serverless compatibility with connection
- * pooling via Neon's built-in PgBouncer. The singleton pattern prevents
- * creating multiple PrismaClient instances in development (hot reload).
+ * Primary workflow: Neon serverless PostgreSQL via @prisma/adapter-neon.
+ * Fallback: Plain PrismaClient for local Docker Postgres (portability).
+ *
+ * Detection is URL-based: if DATABASE_URL contains "neon.tech", the Neon
+ * adapter is used. Otherwise, Prisma connects via standard Postgres driver.
+ *
+ * The singleton pattern prevents creating multiple PrismaClient instances
+ * in development (hot reload).
  *
  * @see https://www.prisma.io/docs/orm/overview/databases/neon
  */
@@ -23,13 +28,22 @@ function createPrismaClient(): PrismaClient {
   if (!connectionString) {
     throw new Error(
       "DATABASE_URL environment variable is not set. " +
-        "Configure it in .env with your Neon connection string."
+        "Configure it in .env with your Neon connection string, " +
+        "or use docker-compose for local development."
     );
   }
 
-  const adapter = new PrismaNeon({ connectionString });
+  // Neon-first: use serverless adapter for Neon URLs,
+  // fall back to plain Prisma for local Docker Postgres
+  const isNeon = connectionString.includes("neon.tech");
 
-  return new PrismaClient({ adapter });
+  if (isNeon) {
+    const adapter = new PrismaNeon({ connectionString });
+    return new PrismaClient({ adapter });
+  }
+
+  // Local Postgres (Docker) — no adapter needed
+  return new PrismaClient();
 }
 
 // Singleton pattern: reuse PrismaClient across hot reloads in development
