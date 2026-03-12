@@ -8,6 +8,7 @@ My goals:
 - Practice **intentional** tradeoff thinking (ADR‑style) based on the actual code.
 - Preserve my deep understanding by always seeing the actual code.
 - Keep my ADR document in sync with how the system actually works.
+- Use **active recall quizzes** so I don’t just passively copy notes.
 
 ---
 
@@ -27,6 +28,49 @@ My goals:
 
 ---
 
+### GLOBAL QUIZ_MODE — ACTIVE RECALL
+
+After you finish any major explanation block (Phase 1, Phase 2, a Phase 3 file, or the project‑level tradeoffs), you will:
+
+1. Ask me:
+
+   > "If you feel you understand this well enough, say:  
+   >  'I’m ready for the quiz' and I will generate active recall questions."
+
+2. When I say anything that clearly indicates I’m ready  
+   (for example “I’m ready for the quiz”, “quiz me on this”, “hit me with questions now”):
+
+   - Generate short‑answer active recall questions based **only** on:
+     - This `mini_re.md`, and
+     - The code/files you just explained in this phase or file.
+
+3. Quiz rules:
+   - 5–10 questions for project/phase‑level explanations.
+   - 3–5 questions for a single file.
+   - Questions must force me to **retrieve** knowledge (no multiple choice).
+   - Prefer “What / How / Why” questions over true/false.
+
+4. Output format (strict):
+   - `### Questions`
+     - Numbered list of questions only.
+     - No hints, no answers, no explanations.
+   - `### Answers (collapsed)`
+     - Wrap answers in a fenced block so I can ignore them at first:
+       ```md
+       <!-- MINI_RE_ANSWERS_START -->
+       1. ...
+       2. ...
+       <!-- MINI_RE_ANSWERS_END -->
+       ```
+
+5. Question coverage:
+   - At least 2 questions must ask me to **explain something in my own words**  
+     (a flow, a file’s purpose, or a tradeoff).
+   - At least 1 question should be interview‑style:  
+     “How would you explain X to an interviewer?”
+
+---
+
 ### ADR AWARENESS
 
 - If this project has an ADR directory (for example `docs/adrs`, `docs/adr`, `architecture_decision_record`, or similar), read those ADR files first.
@@ -34,6 +78,8 @@ My goals:
   - Link explanations back to any relevant ADR (mention its ID and/or title).
   - If a decision clearly matches an existing ADR, call that out explicitly.
   - If you see an important decision in the code that does **not** have an ADR yet, propose 1–2 concise ADR titles and a one‑line summary I could add later.
+
+ADR‑related topics are fair game for quizzes whenever relevant.
 
 ---
 
@@ -48,36 +94,52 @@ My goals:
 
 ### PHASE 1 — SYSTEM PURPOSE & MAIN FLOW (NO CODE)
 
-- In plain English:
-  - Describe what problem this project solves and who uses it.
-  - Describe the main user flow (user action → UI or endpoint → core logic → data store or external service → response).
+In plain English:
+- Describe what problem this project solves and who uses it.
+- Describe the main user flow (user action → UI or endpoint → core logic → data store or external service → response).
 - Keep this to 2–3 short paragraphs.
 - Do not mention specific files or functions yet.
+
+After you finish the Phase 1 explanation, remind me:
+
+> "When you feel you understand this system‑level story, tell me  
+>  'I’m ready for the quiz' and I will quiz you on Phase 1."
+
+Then follow GLOBAL QUIZ_MODE.
 
 ---
 
 ### PHASE 2 — SIGNIFICANT FILE MAP (LIGHT)
 
-- Identify only the most important files for understanding and explaining the system:
-  - Entry points (routes/pages/controllers/CLI commands/background jobs).
-  - Core business logic.
-  - Data access (DB, external APIs, queues).
-  - Key integration glue (auth, middleware, message handlers).
-- Ignore:
-  - node_modules, build artifacts, caches, lock files,
-  - styling‑only files (unless they affect behavior).
-- Output:
-  - Grouped list of significant files by responsibility.
-  - One concise sentence per file: why it exists / what role it plays *in behavior terms*.
-  - When relevant, mention which ADR (if any) is most closely related to this file’s role.
+Identify only the most important files for understanding and explaining the system:
+- Entry points (routes/pages/controllers/CLI commands/background jobs).
+- Core business logic.
+- Data access (DB, external APIs, queues).
+- Key integration glue (auth, middleware, message handlers).
+
+Ignore:
+- node_modules, build artifacts, caches, lock files,
+- styling‑only files (unless they affect behavior).
+
+Output:
+- Grouped list of significant files by responsibility.
+- One concise sentence per file: why it exists / what role it plays *in behavior terms*.
+- When relevant, mention which ADR (if any) is most closely related to this file’s role.
+
+After you finish listing and explaining significant files, remind me:
+
+> "When you feel you understand this file map, tell me  
+>  'I’m ready for the quiz' and I will quiz you on Phase 2."
+
+Then follow GLOBAL QUIZ_MODE.
 
 ---
 
 ### PHASE 3 — CHUNKED WALKTHROUGH (FOCUSED)
 
-- Only apply Phase 3 to:
-  - The 3–5 most central files for the main user flow, AND
-  - Any specific file or folder I explicitly ask for.
+Only apply Phase 3 to:
+- The 3–5 most central files for the main user flow, AND
+- Any specific file or folder I explicitly ask for.
 
 For each selected file:
 
@@ -127,11 +189,20 @@ For each selected file:
 - Suggest 2–3 low‑risk, concrete changes I can try in this file to reinforce understanding (add a log, tweak a label, adjust a small condition, add a simple check).
 - These should be safe to apply and easy to test.
 
+#### F) FILE‑LEVEL QUIZ
+
+After finishing this file (A–E), remind me:
+
+> "When you feel you understand this file, tell me  
+>  'I’m ready for the quiz' and I will quiz you on this file."
+
+Then follow GLOBAL QUIZ_MODE (single‑file rules: 3–5 questions).
+
 ---
 
 ### LEARNING CHECKPOINT
 
-- End each file explanation with:
+End each file explanation with:
 
 > “If you can explain this file in your own words, you understand it.  
 > If not, revisit the chunks above.”
@@ -149,6 +220,13 @@ For each selected file:
   - Propose an ADR ID/title and one‑sentence description if it doesn’t.
 - Phrase them so I can read them almost verbatim as part of a project story in an interview.
 
+After you finish the project‑level tradeoff summary, remind me:
+
+> "When you feel you understand these project decisions, tell me  
+>  'I’m ready for the quiz' and I will quiz you on the headline ADRs."
+
+Then follow GLOBAL QUIZ_MODE (project/phase‑level rules: 5–10 questions).
+
 ---
 
 ### MODE SWITCHING
@@ -158,6 +236,3 @@ For each selected file:
   - Add more detailed chunking and explanations for that file only, or
   - Expand to additional related files I mention.
 - Do not refactor, optimize, or rewrite code unless I explicitly ask.
-
-
-

@@ -77,7 +77,7 @@ Changes take effect immediately — the feed re-ranks live as sliders move.
 | Framework | Next.js (App Router) | 16.1.6 |
 | Database | Neon Serverless PostgreSQL | 16+ |
 | ORM | Prisma | 7.3.0 |
-| Auth | BetterAuth | Latest |
+| Auth | Clerk | 7.x |
 | Styling | Tailwind CSS | 4.0 |
 | Components | shadcn/ui | 3.x |
 | State | Zustand | 5.x |
@@ -165,9 +165,10 @@ DIRECT_URL=postgresql://user:password@host/dbname?sslmode=require
 # LLM (Google Gemini)
 GEMINI_API_KEY=your-gemini-api-key
 
-# Auth (BetterAuth) — required once Phase 3 is implemented
-BETTER_AUTH_SECRET=your-secret-here
-BETTER_AUTH_URL=http://localhost:3000
+# Auth (Clerk) — keyless mode works without these, but needed for production
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+CLERK_WEBHOOK_SECRET=whsec_...
 
 # Seeder tuning (optional — defaults shown)
 SEED_PERSONA_COUNT=20
@@ -225,7 +226,7 @@ npm run test:run
 
 ### In Progress
 
-- [ ] **Authentication** — BetterAuth: sign-up, sign-in, sessions, middleware, onboarding
+- [ ] **Authentication** — Clerk: sign-up, sign-in, session management, user sync webhook
 
 ### Planned
 

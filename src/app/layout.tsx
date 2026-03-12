@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import {
+  ClerkProvider,
+  SignInButton,
+  SignUpButton,
+  Show,
+  UserButton,
+} from "@clerk/nextjs";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,7 +21,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Personalized Recommendation System",
-  description: "A personalized reimplementation of the X recommendation algorithm",
+  description:
+    "A personalized reimplementation of the X recommendation algorithm",
 };
 
 export default function RootLayout({
@@ -27,7 +35,21 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <ClerkProvider>
+          <header className="flex items-center justify-between px-6 py-3 border-b">
+            <span className="text-lg font-semibold">RecSys</span>
+            <nav className="flex items-center gap-3">
+              <Show when="signed-out">
+                <SignInButton />
+                <SignUpButton />
+              </Show>
+              <Show when="signed-in">
+                <UserButton />
+              </Show>
+            </nav>
+          </header>
+          <main>{children}</main>
+        </ClerkProvider>
       </body>
     </html>
   );

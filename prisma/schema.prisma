@@ -1,6 +1,6 @@
 // Personalized Recommendation System — Database Schema
 // Stack: Prisma 7.3 + Neon Serverless PostgreSQL
-// Auth: BetterAuth (user, session, account, verification tables)
+// Auth: Clerk (hosted — sessions/accounts managed externally)
 
 generator client {
   provider = "prisma-client"
@@ -12,11 +12,11 @@ datasource db {
 }
 
 // =============================================================================
-// AUTH TABLES (BetterAuth required)
+// USER (synced from Clerk via webhook)
 // =============================================================================
 
 model User {
-  id            String    @id @default(cuid())
+  id            String    @id @default(cuid()) /// Clerk users: set explicitly via webhook. Personas: auto-generated.
   name          String
   email         String    @unique
   emailVerified Boolean   @default(false)
@@ -33,10 +33,6 @@ model User {
   // Persona metadata — distinguishes LLM-generated personas from real users
   isPersona     Boolean @default(false)
   personaConfig Json?   /// Stores persona traits, interests, writing style for LLM generation
-
-  // Relations — Auth
-  sessions Session[]
-  accounts Account[]
 
   // Relations — Social graph
   followers Follow[] @relation("Following") // Users who follow this user
@@ -57,52 +53,6 @@ model User {
   notificationsTriggered Notification[] @relation("NotificationActor")
 
   @@map("user")
-}
-
-model Session {
-  id        String   @id @default(cuid())
-  expiresAt DateTime
-  token     String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ipAddress String?
-  userAgent String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("session")
-}
-
-model Account {
-  id                    String    @id @default(cuid())
-  accountId             String
-  providerId            String
-  userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accessToken           String?
-  refreshToken          String?
-  idToken               String?
-  accessTokenExpiresAt  DateTime?
-  refreshTokenExpiresAt DateTime?
-  scope                 String?
-  password              String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-
-  @@index([userId])
-  @@map("account")
-}
-
-model Verification {
-  id         String   @id @default(cuid())
-  identifier String
-  value      String
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@map("verification")
 }
 
 // =============================================================================

@@ -106,25 +106,36 @@ This ADR captures all major technology and architecture decisions made before im
 
 ---
 
-### D5: BetterAuth for Authentication
+### D5: Clerk for Authentication (revised from BetterAuth)
 
-**Decision:** Use BetterAuth for user authentication.
+**Decision:** Use Clerk (hosted SaaS) for user authentication. Originally BetterAuth was chosen, but was replaced before any auth code was written.
 
 **Alternatives Considered:**
-- Clerk (hosted auth, generous free tier)
+- BetterAuth (open-source, self-hosted, TypeScript-first) — original choice
 - Auth.js / NextAuth v5 (open-source, widely used)
 
-**Rationale:**
-- TypeScript-first, open-source, no vendor lock-in
-- Native Prisma integration (stores sessions/accounts in your own database)
-- Full control over auth flows (important for a portfolio/learning project)
-- No external auth service dependency — everything stays in your infrastructure
-- Supports email/password, OAuth, and session management out of the box
+**Why BetterAuth was replaced:**
+- Clerk saves ~1 full day of implementation time (3–5 hrs vs 9–14 hrs for equivalent features)
+- Drop-in `<SignIn />`, `<SignUp />`, `<UserButton />` components provide polished, familiar UI without custom design
+- Free tier covers <100 users comfortably — no cost for a portfolio project
+- The core differentiator of this project is the ranking algorithm, not auth plumbing
+
+**Rationale for Clerk:**
+- Pre-built, production-grade auth UI (Google OAuth, email/password, magic links)
+- First-class Next.js 16 App Router support (`clerkMiddleware()` in `proxy.ts`)
+- Keyless mode for instant local development (no account required to run)
+- Session management, JWT, and security handled externally — less surface area to maintain
+
+**User sync strategy:**
+- Clerk manages user identities externally
+- A webhook at `/api/webhooks/clerk` syncs `user.created`, `user.updated`, `user.deleted` events to the Prisma `User` table
+- The `User.id` field accepts both Clerk IDs (real users) and auto-generated CUIDs (LLM personas)
 
 **Consequences:**
-- More setup work than Clerk (but more learning value)
-- Auth tables live in the same Neon database alongside application data
-- Must implement auth middleware and session handling manually
+- Vendor dependency on Clerk (mitigated: free tier, and auth code is isolated to middleware + layout + webhook)
+- User data lives in two places (Clerk + Prisma) — webhook keeps them in sync
+- Ejecting to self-hosted auth later requires ~2–3 days of migration work
+- `Session`, `Account`, `Verification` models removed from Prisma schema (Clerk handles these)
 
 ---
 
@@ -226,7 +237,7 @@ This ADR captures all major technology and architecture decisions made before im
 
 **Decision:** Do not enable Neon Auth. Neon is used strictly as "just Postgres."
 
-**Rationale:** We already chose BetterAuth (D5) for authentication. Enabling Neon Auth would create a redundant, conflicting auth layer. Neon's only role is database hosting.
+**Rationale:** We use Clerk (D5) for authentication. Enabling Neon Auth would create a redundant, conflicting auth layer. Neon's only role is database hosting.
 
 ---
 
@@ -261,7 +272,7 @@ This ADR captures all major technology and architecture decisions made before im
 | D2 | Framework | Next.js 16 App Router |
 | D3 | ORM | Prisma 7 |
 | D4 | Database hosting | Neon serverless PostgreSQL |
-| D5 | Authentication | BetterAuth |
+| D5 | Authentication | Clerk (revised from BetterAuth) |
 | D6 | LLM provider | Gemini 3 Flash / Pro |
 | D7 | Ranking approach | Heuristic 4-stage pipeline |
 | D8 | Modesty policy | Presentation-layer CSS blur (ranking-neutral) |

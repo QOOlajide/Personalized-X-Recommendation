@@ -1,0 +1,44 @@
+---
+description: Clerk authentication integration rules for Next.js 16 App Router
+globs: "*.ts,*.tsx"
+---
+
+# Clerk + Next.js 16 App Router
+
+## Setup
+
+- `@clerk/nextjs` installed
+- `src/proxy.ts` — `clerkMiddleware()` from `@clerk/nextjs/server`
+- `<ClerkProvider>` wraps content inside `<body>` in `app/layout.tsx`
+- Webhook at `/api/webhooks/clerk` syncs Clerk users → Prisma `User` table
+
+## Keyless Mode
+
+No Clerk account required to run locally. Without env vars, Clerk auto-generates temporary keys. A "Configure your application" prompt appears to claim later.
+
+## ALWAYS
+
+- Use `clerkMiddleware()` from `@clerk/nextjs/server` in `src/proxy.ts`
+- Add `<ClerkProvider>` inside `<body>` in `app/layout.tsx`
+- Import from `@clerk/nextjs` or `@clerk/nextjs/server`
+- Use App Router (app/page.tsx, app/layout.tsx)
+- `async/await` with `auth()` from `@clerk/nextjs/server`
+- Use `<Show when="signed-in">` and `<Show when="signed-out">`
+
+## NEVER
+
+- Reference `_app.tsx` or pages router
+- Use `authMiddleware()` (replaced by `clerkMiddleware()`)
+- Use deprecated `<SignedIn>`, `<SignedOut>` (replaced by `<Show>`)
+- Import deprecated APIs (`withAuth`, old `currentUser`)
+- Tell users to sign up or get API keys before running (keyless mode works)
+- Use `middleware.ts` (Next.js 16 uses `proxy.ts`)
+
+## Verify Checklist
+
+1. Is `clerkMiddleware()` in `src/proxy.ts`?
+2. Is `ClerkProvider` inside `<body>` in `app/layout.tsx`?
+3. Imports only from `@clerk/nextjs` or `@clerk/nextjs/server`?
+4. Using App Router, not pages router?
+5. Using `<Show>` instead of `<SignedIn>`/`<SignedOut>`?
+

@@ -237,25 +237,31 @@
 
 ---
 
-## T11 — BetterAuth (Self-Hosted) vs. Clerk (Managed Auth)
+## T11 — Clerk (Managed Auth) vs. BetterAuth (Self-Hosted) — REVISED
 
 **Context:** The platform needs user authentication (sign up, sign in, sessions) for real users to interact with the synthetic network.
 
-**Option A (chosen):** BetterAuth — open-source, TypeScript-first, stores auth data in our own Neon database via Prisma.
+**Original choice:** BetterAuth (self-hosted, TypeScript-first, stores auth in own DB).
 
-**Option B (rejected):** Clerk — fully managed auth service with a generous free tier, pre-built UI components, and zero backend code.
+**Revised choice:** Clerk (managed SaaS) — switched before any auth code was written.
+
+**Why we switched:**
+- Speed. Clerk saves ~1 full day of implementation (3–5 hrs vs 9–14 hrs). The core project differentiator is the ranking algorithm, not auth.
+- Polished UI. `<SignIn />`, `<SignUp />`, `<UserButton />` are drop-in, familiar, and production-grade — no custom forms needed.
+- Free tier. <100 users is comfortably within Clerk's free tier (up to 10k+ MAU).
+- Keyless mode. Can run locally without even creating a Clerk account.
 
 **What we gained:**
-- Full control over auth flows — important for a portfolio project where understanding auth internals is part of the learning objective.
-- No vendor dependency. Auth data lives in our Postgres database alongside everything else.
-- No external service costs or rate limits beyond what we control.
+- Instant, professional auth UI that users recognize from other SaaS products.
+- Battle-tested security (CSRF, rate limiting, bot detection, session rotation) out of the box.
+- Zero auth tables in our schema — `Session`, `Account`, `Verification` models removed.
 
 **What we gave up:**
-- Development time. Clerk would give us production-grade auth in ~30 minutes (drop in `<SignIn />` component, done). BetterAuth requires manual middleware setup, session handling, and auth UI.
-- Battle-tested security. Clerk handles CSRF, rate limiting, bot detection, and session rotation out of the box. With BetterAuth, we're responsible for hardening.
-- Pre-built UI. Clerk's sign-in/sign-up modals are polished and accessible. We need to build ours with shadcn/ui.
+- Vendor dependency. User identities live in Clerk's hosted store; ejecting later requires ~2–3 days of migration.
+- Dual data residency. Real users exist in both Clerk and our Prisma `User` table, synced via webhook. If the webhook fails, data can drift.
+- Less learning value for auth internals. (Acceptable trade-off — the ranking pipeline provides more than enough engineering depth.)
 
-**Revisit trigger:** If the auth implementation becomes a time sink or we discover security gaps we can't easily fix, Clerk is a drop-in replacement — the auth tables would be removed from our schema and Clerk would manage them externally.
+**Revisit trigger:** If Clerk's free tier is deprecated, pricing changes, or we need auth flows Clerk doesn't support, BetterAuth remains a viable self-hosted fallback using the same Prisma schema.
 
 ---
 
@@ -294,5 +300,5 @@
 | T8 | Modesty policy | Presentation blur | Ranking filter | Blurred placeholders still visible |
 | T9 | ORM version | Prisma 7 (edge) | Prisma 5/6 (stable) | Sparse docs, API instability |
 | T10 | Media support | Text-only launch | Full media | Visually incomplete |
-| T11 | Authentication | BetterAuth (self) | Clerk (managed) | More setup, more security responsibility |
+| T11 | Authentication | Clerk (managed) | BetterAuth (self) | Vendor dependency, dual data residency |
 | T12 | LLM batching | One persona/call | Multi-persona batch | 5x more API calls |

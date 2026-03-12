@@ -28,22 +28,12 @@ function createPrismaClient(): PrismaClient {
   if (!connectionString) {
     throw new Error(
       "DATABASE_URL environment variable is not set. " +
-        "Configure it in .env with your Neon connection string, " +
-        "or use docker-compose for local development."
+        "Configure it in .env with your Neon connection string."
     );
   }
 
-  // Neon-first: use serverless adapter for Neon URLs,
-  // fall back to plain Prisma for local Docker Postgres
-  const isNeon = connectionString.includes("neon.tech");
-
-  if (isNeon) {
-    const adapter = new PrismaNeon({ connectionString });
-    return new PrismaClient({ adapter });
-  }
-
-  // Local Postgres (Docker) — no adapter needed
-  return new PrismaClient();
+  const adapter = new PrismaNeon({ connectionString });
+  return new PrismaClient({ adapter });
 }
 
 // Singleton pattern: reuse PrismaClient across hot reloads in development
