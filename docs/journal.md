@@ -66,3 +66,77 @@ This project has a journal.md. Every time we fix or clearly understand a bug or 
 **Fix:** Added an explicit type annotation: `const post: { id: string } = await db.post.create({...})`. This breaks the inference cycle since TypeScript no longer needs to derive the type from the call. We annotate with only `{ id: string }` because that's the sole field read from `post`.
 
 **Lesson:** When a variable assigned from a Prisma call is referenced (even indirectly) in a later iteration of the same loop that feeds back into another Prisma call, TypeScript's conditional return-type inference can go circular. An explicit annotation on the variable — scoped to the fields you actually use — breaks the cycle cleanly.
+
+---
+
+## Entry 6 — 2026-03-15: `prisma.config.ts` — `directUrl` and `earlyAccess` are not valid properties
+
+**Symptom:** `npm run build` failed twice in succession with TypeScript errors:
+1. `Object literal may only specify known properties, and 'directUrl' does not exist in type '{ url?: string | undefined; shadowDatabaseUrl?: string | undefined; }'`
+2. After removing `directUrl`, a second error: `Object literal may only specify known properties, and 'earlyAccess' does not exist in type 'PrismaConfig'`
+
+**Root cause:** `prisma.config.ts` was authored using examples from early Prisma 7 previews or blog posts that included `directUrl` in the `datasource` block and `earlyAccess` at the top level. By the time Prisma 7.3.0 shipped, neither property existed in the `PrismaConfig` type or its `datasource` sub-type. The `directUrl` concept (for migrations) is now handled differently, and `earlyAccess` flags were removed from the stable release.
+
+**Fix:** Removed both properties, leaving a minimal config:
+```ts
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  migrations: { path: "prisma/migrations" },
+  datasource: { url: process.env["DATABASE_URL"]! },
+});
+```
+
+**Lesson:** Prisma's config file API (`prisma.config.ts`) is new and evolved rapidly between preview and stable. Always check the installed type definitions (`node_modules/prisma/config.d.ts`) rather than relying on blog posts or preview docs. Remove properties one at a time when facing "does not exist" errors — there may be multiple stale fields.
+
+---
+
+## Entry 7 — 2026-03-15: `new PrismaClient()` without an adapter fails in Prisma 7
+
+**Symptom:** `npm run build` failed with `Expected 1 arguments, but got 0` on `new PrismaClient()` in `src/lib/db.ts`.
+
+**Root cause:** `db.ts` had a fallback code path for local development that called `new PrismaClient()` without any arguments (no adapter). In Prisma 6 and earlier, this was valid — PrismaClient would use the built-in query engine. In Prisma 7, when the schema is configured with `previewFeatures = ["driverAdapters"]` or when using `prisma.config.ts` with a driver adapter setup, PrismaClient's constructor _requires_ an adapter argument. The bare no-argument call is no longer valid.
+
+**Fix:** Removed the bare `new PrismaClient()` fallback. The client now always uses the `PrismaNeon` adapter:
+```ts
+const adapter = new PrismaNeon({ connectionString });
+return new PrismaClient({ adapter });
+```
+This means local development also routes through Neon (which works fine — Neon's free tier has no issues for dev).
+
+**Lesson:** In Prisma 7 with driver adapters, there is no "default" engine fallback. Once you commit to an adapter-based setup, every `PrismaClient` instantiation must provide one. Don't maintain separate code paths for "with adapter" vs. "without adapter" — it creates a build-time landmine.
+
+---
+
+## Entry 8 — 2026-03-15: `Module not found: '../generated/prisma/client'` on Vercel build
+
+**Symptom:** Vercel deployment failed with `Module not found: Can't resolve '../generated/prisma/client'` in `src/lib/db.ts`. The same code worked locally.
+
+**Root cause:** `prisma generate` had been run locally (producing `src/generated/prisma/`), but the generated client is in `.gitignore` and not committed. On Vercel, the build starts from a fresh `git clone` — the generated directory doesn't exist. The `build` script was just `next build`, which doesn't run `prisma generate` first.
+
+**Fix:** Changed the `build` script in `package.json` from `"next build"` to `"prisma generate && next build"`. This ensures the Prisma client is regenerated from `schema.prisma` on every build, both locally and on Vercel.
+
+**Lesson:** Any code-generated artifact that's in `.gitignore` (Prisma client, GraphQL codegen, etc.) must be regenerated as part of the build pipeline. For Vercel + Prisma, prepending `prisma generate` to the build command is the standard pattern. Never rely on the generated client being present from a prior local run.
+
+---
+
+## Entry 9 — 2026-03-15: Clerk `UserButton` — `afterSignOutUrl` prop removed in v7
+
+**Symptom:** Vercel build failed with a TypeScript error: `Property 'afterSignOutUrl' does not exist on type 'IntrinsicAttributes & Without<WithClerkProp<...>, "clerk">'` on the `<UserButton>` component in `LeftSidebar.tsx`.
+
+**Root cause:** In Clerk v5/v6, `<UserButton afterSignOutUrl="/" />` was the standard way to control where users land after signing out. In Clerk v7 (`@clerk/nextjs@7.x`), this prop was removed. The sign-out redirect is now configured via the `CLERK_SIGN_IN_URL` environment variable or through `<ClerkProvider>` props.
+
+**Fix:** Removed the `afterSignOutUrl` prop entirely. The sign-out behavior is already controlled by the `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in` environment variable set in `.env`.
+
+**Lesson:** Clerk's component API changes across major versions. When upgrading (or starting with v7), check each component's props against the installed types, not v5/v6 documentation. The pattern of moving configuration from component props to environment variables or provider-level config is a recurring theme in Clerk v7.
+
+---
+
+## Entry 10 — 2026-03-15: Clerk middleware blocks pages not listed in `createRouteMatcher`
+
+**Symptom:** Navigating to `/logo-preview` (a temporary preview page) resulted in an infinite redirect loop to `/sign-in`, even though the page existed and compiled successfully.
+
+**Root cause:** `src/proxy.ts` uses `createRouteMatcher` to define public routes (`/`, `/sign-in(.*)`, `/sign-up(.*)`). Any route not in the matcher is treated as protected — `auth.protect()` fires and redirects unauthenticated users to sign-in. The `/logo-preview` page wasn't in the list, so it was blocked.
+
+**Fix:** Temporarily added `"/logo-preview"` to the `createRouteMatcher` array, verified the page worked, then removed it and deleted the preview page.
+
+**Lesson:** In Clerk's `clerkMiddleware` + `createRouteMatcher` pattern, the default is "deny all, allow listed." Every new public-facing route must be explicitly added to the matcher. When debugging "page won't load" issues, check proxy.ts first — it's the most common cause of unexpected redirects in Clerk-protected apps.
