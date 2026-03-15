@@ -295,4 +295,6 @@ npm run test:run
 
 ## License
 
+MIT — see [`LICENSE`](LICENSE).
+
 This project is for educational and portfolio purposes. It is a reimplementation inspired by X's open-sourced algorithm architecture, not affiliated with X Corp.
