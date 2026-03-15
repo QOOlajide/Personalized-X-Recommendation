@@ -85,7 +85,6 @@ export function LeftSidebar() {
       {/* Bottom: user widget */}
       <div className="flex items-center gap-3 rounded-full p-3 transition-colors hover:bg-accent">
         <UserButton
-          afterSignOutUrl="/"
           appearance={{
             elements: {
               avatarBox: 'h-10 w-10',
