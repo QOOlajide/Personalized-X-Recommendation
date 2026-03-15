@@ -1,6 +1,19 @@
+'use client';
+
 import { FaSlidersH, FaQuestionCircle, FaUsers, FaShieldAlt } from 'react-icons/fa';
+import { motion } from 'motion/react';
 import type { IconType } from 'react-icons';
 
+/* ------------------------------------------------------------------ */
+/*  Shared animation tokens                                           */
+/* ------------------------------------------------------------------ */
+const fadeUp = { opacity: 0, y: 8 };
+const visible = { opacity: 1, y: 0 };
+const transition = { duration: 0.6, ease: [0.4, 0, 0.2, 1] as const };
+
+/* ------------------------------------------------------------------ */
+/*  Data                                                              */
+/* ------------------------------------------------------------------ */
 type Feature = {
   icon: IconType;
   title: string;
@@ -34,12 +47,21 @@ const FEATURES: Feature[] = [
   },
 ];
 
+/* ------------------------------------------------------------------ */
+/*  Component                                                         */
+/* ------------------------------------------------------------------ */
 export function Features() {
   return (
     <section className="border-b border-border">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
         {/* Intro */}
-        <div className="max-w-2xl space-y-2 mb-8">
+        <motion.div
+          className="max-w-2xl space-y-2 mb-8"
+          initial={fadeUp}
+          whileInView={visible}
+          viewport={{ once: true }}
+          transition={transition}
+        >
           <p className="text-xs font-medium uppercase tracking-wide text-primary">
             Features
           </p>
@@ -50,14 +72,19 @@ export function Features() {
             Every control in Shift connects directly to the ranking code, so you
             can see how changing weights changes what you see in the feed.
           </p>
-        </div>
+        </motion.div>
 
         {/* Feature cards */}
         <div className="grid gap-6 sm:grid-cols-2">
-          {FEATURES.map((feature) => (
-            <div
+          {FEATURES.map((feature, i) => (
+            <motion.div
               key={feature.title}
               className="relative flex flex-col gap-3 rounded-2xl border border-border bg-zinc-950/60 p-5 sm:p-6 hover:border-primary/60 transition-colors duration-150"
+              initial={fadeUp}
+              whileInView={visible}
+              viewport={{ once: true }}
+              transition={{ ...transition, delay: i * 0.1 }}
+              whileHover={{ y: -4, transition: { duration: 0.2, ease: 'easeOut' } }}
             >
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <feature.icon size={16} />
@@ -66,7 +93,7 @@ export function Features() {
               <p className="text-sm text-muted-foreground">
                 {feature.description}
               </p>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>

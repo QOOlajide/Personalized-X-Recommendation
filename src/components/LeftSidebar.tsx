@@ -82,12 +82,15 @@ export function LeftSidebar() {
         </button>
       </div>
 
-      {/* Bottom: user widget */}
-      <div className="flex items-center gap-3 rounded-full p-3 transition-colors hover:bg-accent">
+      {/* Bottom: user account widget */}
+      <div className="flex items-center justify-center gap-3 rounded-full p-3 transition-colors hover:bg-accent xl:justify-start">
         <UserButton
+          showName
           appearance={{
             elements: {
               avatarBox: 'h-10 w-10',
+              userButtonOuterIdentifier: 'hidden xl:block text-sm font-semibold truncate max-w-[140px]',
+              userButtonBox: 'flex-row-reverse',
             },
           }}
         />

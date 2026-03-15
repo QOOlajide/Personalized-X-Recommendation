@@ -1,7 +1,20 @@
+'use client';
+
 import Link from 'next/link';
 import { FaGithub } from 'react-icons/fa';
+import { motion } from 'motion/react';
 import { LogoIcon } from '../../../components/LogoIcon';
 
+/* ------------------------------------------------------------------ */
+/*  Shared animation tokens                                           */
+/* ------------------------------------------------------------------ */
+const fadeUp = { opacity: 0, y: 8 };
+const visible = { opacity: 1, y: 0 };
+const transition = { duration: 0.6, ease: [0.4, 0, 0.2, 1] as const };
+
+/* ------------------------------------------------------------------ */
+/*  Component                                                         */
+/* ------------------------------------------------------------------ */
 type HeroProps = {
   githubUrl: string;
 };
@@ -12,7 +25,12 @@ export function Hero({ githubUrl }: HeroProps) {
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-20 sm:py-24 lg:py-28">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-10 lg:gap-16">
           {/* Left: copy */}
-          <div className="flex flex-col gap-6 max-w-xl">
+          <motion.div
+            className="flex flex-col gap-6 max-w-xl"
+            initial={fadeUp}
+            animate={visible}
+            transition={transition}
+          >
             {/* Logo + app name */}
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-900 border border-border">
@@ -61,10 +79,16 @@ export function Hero({ githubUrl }: HeroProps) {
             <p className="text-xs text-muted-foreground">
               No real accounts. 500 synthetic personas only.
             </p>
-          </div>
+          </motion.div>
 
           {/* Right: ranking controls preview card */}
-          <div className="w-full lg:w-[420px] shrink-0">
+          <motion.div
+            className="w-full lg:w-[420px] shrink-0"
+            initial={fadeUp}
+            animate={visible}
+            transition={{ ...transition, delay: 0.2 }}
+            whileHover={{ y: -4, transition: { duration: 0.2, ease: 'easeOut' } }}
+          >
             <div className="rounded-2xl border border-border bg-zinc-950/60 shadow-[0_0_0_1px_rgba(15,23,42,0.6)]">
               {/* Card header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -98,7 +122,7 @@ export function Hero({ githubUrl }: HeroProps) {
                 </p>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>

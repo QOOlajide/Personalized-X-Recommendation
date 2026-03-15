@@ -1,6 +1,19 @@
+'use client';
+
 import Link from 'next/link';
 import { FaGithub } from 'react-icons/fa';
+import { motion } from 'motion/react';
 
+/* ------------------------------------------------------------------ */
+/*  Shared animation tokens                                           */
+/* ------------------------------------------------------------------ */
+const fadeUp = { opacity: 0, y: 8 };
+const visible = { opacity: 1, y: 0 };
+const transition = { duration: 0.6, ease: [0.4, 0, 0.2, 1] as const };
+
+/* ------------------------------------------------------------------ */
+/*  Component                                                         */
+/* ------------------------------------------------------------------ */
 type FinalCtaProps = {
   githubUrl: string;
 };
@@ -8,7 +21,13 @@ type FinalCtaProps = {
 export function FinalCta({ githubUrl }: FinalCtaProps) {
   return (
     <section className="border-t border-border">
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <motion.div
+        className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+        initial={fadeUp}
+        whileInView={visible}
+        viewport={{ once: true }}
+        transition={transition}
+      >
         <h2 className="max-w-[20ch] text-xl sm:text-2xl font-semibold">
           A transparent social feed, ready to inspect.
         </h2>
@@ -29,7 +48,7 @@ export function FinalCta({ githubUrl }: FinalCtaProps) {
             View on GitHub
           </a>
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 }

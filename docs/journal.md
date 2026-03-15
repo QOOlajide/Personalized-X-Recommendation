@@ -140,3 +140,32 @@ This means local development also routes through Neon (which works fine — Neon
 **Fix:** Temporarily added `"/logo-preview"` to the `createRouteMatcher` array, verified the page worked, then removed it and deleted the preview page.
 
 **Lesson:** In Clerk's `clerkMiddleware` + `createRouteMatcher` pattern, the default is "deny all, allow listed." Every new public-facing route must be explicitly added to the matcher. When debugging "page won't load" issues, check proxy.ts first — it's the most common cause of unexpected redirects in Clerk-protected apps.
+
+---
+
+## Entry 11 — 2026-03-15: Clerk v7 removed `<SignedIn>` / `<SignedOut>` — use `<Show>` instead
+
+**Symptom:** Build error: `Export SignedIn doesn't exist in target module` when importing `{ SignedIn, SignedOut, UserButton }` from `@clerk/nextjs` in the new marketing Navbar.
+
+**Root cause:** In Clerk v7, the `<SignedIn>` and `<SignedOut>` components were replaced by a unified `<Show>` component with a `when` prop. The old named exports no longer exist in `@clerk/nextjs`.
+
+**Fix:** Replaced `<SignedIn>` / `<SignedOut>` with `<Show when="signed-in">` / `<Show when="signed-out">` as specified in the project's Clerk rules (`.cursor/rules/clerk.mdc`).
+
+**Lesson:** The project's own rules file already documented this (`NEVER use deprecated <SignedIn>, <SignedOut>`). When an import fails, check project rules and installed type definitions before searching external docs — the answer is often already local.
+
+---
+
+## Entry 12 — 2026-03-15: Sign-in/sign-up buttons redirect back to landing page for authenticated users
+
+**Symptom:** Clicking "Log in" or "Sign up" on the landing page navigated to `/sign-in` or `/sign-up`, then immediately bounced back to `/`. Appeared as if the buttons "didn't point to anything."
+
+**Root cause:** The user was already signed in (Clerk session active). Clerk's `<SignIn />` and `<SignUp />` components detect an existing session and redirect the authenticated user away — back to the origin page. The landing page (`/`) was a public route, so the middleware didn't redirect authenticated users to `/feed`, leaving them stuck on a page with non-functional auth buttons.
+
+**Fix:** Added a server-side auth check at the top of the landing page:
+```ts
+const { userId } = await auth();
+if (userId) redirect('/feed');
+```
+Authenticated users now skip the landing page entirely and go straight to `/feed`.
+
+**Lesson:** Public marketing pages that show auth CTAs need an authenticated-user redirect. If the middleware treats `/` as public (correct — it's the landing page), the page itself must handle the redirect. Otherwise, signed-in users see a broken experience where auth buttons loop back to the same page.

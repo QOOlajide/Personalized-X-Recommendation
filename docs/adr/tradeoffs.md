@@ -302,3 +302,5 @@
 | T10 | Media support | Text-only launch | Full media | Visually incomplete |
 | T11 | Authentication | Clerk (managed) | BetterAuth (self) | Vendor dependency, dual data residency |
 | T12 | LLM batching | One persona/call | Multi-persona batch | 5x more API calls |
+| T13 | Landing page animations | Motion fade-up + hover-lift | CSS-only or no animation | Client JS for presentational components |
+| T14 | Landing auth UX | Page-level redirect to /feed | Conditional navbar (signed-in vs signed-out) | Landing page invisible to authenticated users |

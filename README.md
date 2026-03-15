@@ -25,8 +25,8 @@ Built with a synthetic social network of LLM-generated personas, Shift lets you 
 
 | Typical X Clone | Shift |
 |-----------------|-------|
-| Feed is `ORDER BY created_at DESC` | 4-stage ranking pipeline: sourcing → scoring → diversity filtering → explainable feed |
-| No algorithm — everyone sees the same thing | 5 weighted scoring factors driven by per-user preference sliders |
+| Feed is `ORDER BY created_at DESC` | 4-stage ranking pipeline: sourcing → ML scoring → diversity filtering → explainable feed |
+| No algorithm — everyone sees the same thing | ML model + user preference sliders for real-time feed re-ranking |
 | Empty database until users create content | ~500 LLM-generated personas with distinct writing styles, interests, and engagement patterns |
 | No transparency into feed ordering | "Why am I seeing this?" on every post with factor-level breakdowns |
 | No anti-filter-bubble mechanisms | Author diversity caps, topic saturation limits, freshness floors, exploration injection |
@@ -38,13 +38,13 @@ Built with a synthetic social network of LLM-generated personas, Shift lets you 
 ### Ranking Pipeline (4 Stages)
 
 ```
-Candidate Sourcing  →  Scoring  →  Heuristic Filtering  →  Feed Construction
-   (~1,500 posts)     (weighted)     (rule-based)            (~50 posts)
+Candidate Sourcing  →  ML Scoring  →  Diversity Filtering  →  Feed Construction
+   (~1,500 posts)      (trained)       (rule-based)             (~50 posts)
 ```
 
 **Stage 1 — Candidate Sourcing:** Pulls recent posts from followed users (in-network) and users with overlapping topic interests (out-of-network).
 
-**Stage 2 — Scoring:** Each candidate receives a composite score based on:
+**Stage 2 — Scoring:** Each candidate receives a composite score. Currently uses hand-tuned weighted heuristics (being upgraded to a trained ML model):
 - Recency (exponential time decay)
 - Popularity (log-scaled engagement)
 - Network bonus (followed vs. discovered)
@@ -53,7 +53,7 @@ Candidate Sourcing  →  Scoring  →  Heuristic Filtering  →  Feed Constructi
 
 User preference sliders (`recencyWeight`, `popularityWeight`, `networkWeight`, `diversityWeight`) dynamically reweight these factors.
 
-**Stage 3 — Heuristic Filtering:** Enforces feed diversity to prevent filter bubbles:
+**Stage 3 — Diversity Filtering:** Enforces feed diversity to prevent filter bubbles:
 - Author diversity cap (max N posts per author per page)
 - Topic saturation limit (no more than M% from one topic)
 - Freshness floor (guarantees some recent content)
@@ -240,18 +240,20 @@ npm run test:run
 
 ### Completed
 
-- [x] **Architecture decisions** — 11 ADRs documented
+- [x] **Architecture decisions** — 11 ADRs documented, 14 tradeoff entries
 - [x] **Database schema** — 15 models with full indexing strategy
 - [x] **Persona generation** — Gemini-powered with retry logic, batch generation, handle de-duplication
 - [x] **Content generation** — Tweets, threads, replies, quote tweets, follow graph, engagement seeding
-- [x] **Ranking engine** — All 4 stages implemented and unit tested
+- [x] **Ranking engine** — 4-stage heuristic pipeline implemented and unit tested (ML upgrade planned — see below)
 - [x] **Authentication** — Clerk: custom sign-in/sign-up pages, route protection via proxy.ts, user sync webhook
 - [x] **Deployment** — Live on Vercel with Neon PostgreSQL
 - [x] **Core UI shell** — X-style 3-column layout, left nav with Shift logo, right sidebar (trending + who to follow), dark theme matching X's colors
+- [x] **Marketing landing page** — 6-section page (Hero, Features, How It Works, Audience, Open Source, Final CTA) with Motion animations, Navbar with auth flow, server-side redirect for authenticated users
 
-### In Progress
+### Next Up
 
 - [ ] **Feed integration** — Wire mock posts to real ranking pipeline, connect to database
+- [ ] **ML ranking model** — Replace heuristic scoring (Stage 2) with a trained model for non-linear signal capture while preserving explainability
 - [ ] **Algorithm tuning panel** — Preference sliders that re-rank the feed in real time
 
 ### Planned
@@ -262,21 +264,20 @@ npm run test:run
 - [ ] **Notifications** — GitHub/Discord-style triage with filter pills
 - [ ] **Social features** — Profiles, follow/unfollow, follow suggestions
 - [ ] **Behavioral simulation** — Ongoing persona activity, engagement cascades, interest drift
-- [ ] **Sensitivity/modesty layer** — Presentation-layer CSS blur for media (ranking-neutral)
 
 ---
 
 ## Key Design Decisions
 
-1. **Heuristic ranking, not ML** — Transparent, debuggable, and explainable. Every score decomposes into named, weighted factors. If the system used ML, "Why am I seeing this?" would be impossible to implement meaningfully.
+1. **ML ranking (upgrading from heuristics)** — The current heuristic pipeline is being replaced with a trained ML model for non-linear signal capture. Explainability remains a first-class requirement — every score will still decompose into inspectable factors.
 
 2. **User-programmable algorithm** — Preference sliders don't just filter — they change the mathematical weights in the scoring function. This is the core differentiator from a standard social media app.
 
 3. **Synthetic-first, real-user-compatible** — The network starts populated with LLM personas. Real users sign up and interact _alongside_ personas, so the feed is never empty.
 
-4. **Anti-filter-bubble by design** — Heuristic filtering (Stage 3) actively prevents the algorithm from creating echo chambers through diversity enforcement rules.
+4. **Anti-filter-bubble by design** — Diversity filtering (Stage 3) actively prevents the algorithm from creating echo chambers through author caps, topic saturation limits, and exploration injection.
 
-5. **Presentation-layer modesty policy** — When media is added, a Muslim-first design principle applies CSS blur to human imagery. This is strictly visual — the ranking engine has zero awareness of it. Designed to also cover sensitive content (gore, surgeries).
+5. **Text-only launch** — Media support is deferred. The ranking engine, explainability, and preference controls are the priority. Schema is ready for media when the time comes.
 
 ---
 
@@ -287,6 +288,8 @@ npm run test:run
 | [`docs/Context.md`](docs/Context.md) | Project requirements and challenges |
 | [`docs/UI/design-system-plan.md`](docs/UI/design-system-plan.md) | UI design system plan and branding guide |
 | [`docs/adr/001-tech-stack-and-architecture.md`](docs/adr/001-tech-stack-and-architecture.md) | All 11 technology and architecture decisions |
+| [`docs/adr/tradeoffs.md`](docs/adr/tradeoffs.md) | Engineering tradeoffs T1–T12 |
+| [`docs/adr/tradeoffs-v2.md`](docs/adr/tradeoffs-v2.md) | Engineering tradeoffs T13+ (landing page, auth UX, ML pivot) |
 | [`docs/journal.md`](docs/journal.md) | Development log: bugs encountered, fixes applied, lessons learned |
 | [`docs/tests.md`](docs/tests.md) | Testing strategy and conventions |
 | [`docs/general_coding_guidelines.md`](docs/general_coding_guidelines.md) | Coding standards for the project |

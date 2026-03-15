@@ -1,5 +1,18 @@
-import { FaGithub } from 'react-icons/fa';
+'use client';
 
+import { FaGithub } from 'react-icons/fa';
+import { motion } from 'motion/react';
+
+/* ------------------------------------------------------------------ */
+/*  Shared animation tokens                                           */
+/* ------------------------------------------------------------------ */
+const fadeUp = { opacity: 0, y: 8 };
+const visible = { opacity: 1, y: 0 };
+const transition = { duration: 0.6, ease: [0.4, 0, 0.2, 1] as const };
+
+/* ------------------------------------------------------------------ */
+/*  Component                                                         */
+/* ------------------------------------------------------------------ */
 type OpenSourceProps = {
   githubUrl: string;
 };
@@ -7,7 +20,13 @@ type OpenSourceProps = {
 export function OpenSource({ githubUrl }: OpenSourceProps) {
   return (
     <section className="border-b border-border">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 text-center">
+      <motion.div
+        className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 text-center"
+        initial={fadeUp}
+        whileInView={visible}
+        viewport={{ once: true }}
+        transition={transition}
+      >
         <h2 className="text-xl sm:text-2xl font-semibold">
           Built in the open.
         </h2>
@@ -27,7 +46,7 @@ export function OpenSource({ githubUrl }: OpenSourceProps) {
             View on GitHub
           </a>
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 }

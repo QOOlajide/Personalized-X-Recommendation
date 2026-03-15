@@ -1,3 +1,17 @@
+'use client';
+
+import { motion } from 'motion/react';
+
+/* ------------------------------------------------------------------ */
+/*  Shared animation tokens                                           */
+/* ------------------------------------------------------------------ */
+const fadeUp = { opacity: 0, y: 8 };
+const visible = { opacity: 1, y: 0 };
+const transition = { duration: 0.6, ease: [0.4, 0, 0.2, 1] as const };
+
+/* ------------------------------------------------------------------ */
+/*  Data                                                              */
+/* ------------------------------------------------------------------ */
 type Step = {
   number: string;
   title: string;
@@ -31,13 +45,22 @@ const STEPS: Step[] = [
   },
 ];
 
+/* ------------------------------------------------------------------ */
+/*  Component                                                         */
+/* ------------------------------------------------------------------ */
 export function HowItWorks() {
   return (
     <section className="border-b border-border">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
         <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
           {/* Left: description */}
-          <div className="max-w-md space-y-3 shrink-0">
+          <motion.div
+            className="max-w-md space-y-3 shrink-0"
+            initial={fadeUp}
+            whileInView={visible}
+            viewport={{ once: true }}
+            transition={transition}
+          >
             <p className="text-xs font-medium uppercase tracking-wide text-primary">
               How Shift works
             </p>
@@ -49,14 +72,19 @@ export function HowItWorks() {
               from a synthetic network, score them with tunable weights, and
               apply diversity constraints before rendering.
             </p>
-          </div>
+          </motion.div>
 
           {/* Right: pipeline steps */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {STEPS.map((step) => (
-              <div
+            {STEPS.map((step, i) => (
+              <motion.div
                 key={step.number}
-                className="rounded-2xl border border-border bg-zinc-950/60 p-4 space-y-1.5"
+                className="rounded-2xl border border-border bg-zinc-950/60 p-4 space-y-1.5 hover:border-primary/60 transition-colors duration-150"
+                initial={fadeUp}
+                whileInView={visible}
+                viewport={{ once: true }}
+                transition={{ ...transition, delay: i * 0.1 }}
+                whileHover={{ y: -2, transition: { duration: 0.2, ease: 'easeOut' } }}
               >
                 <p className="text-xs font-medium text-primary">
                   {step.number}.
@@ -65,7 +93,7 @@ export function HowItWorks() {
                 <p className="text-xs sm:text-sm text-muted-foreground">
                   {step.description}
                 </p>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
