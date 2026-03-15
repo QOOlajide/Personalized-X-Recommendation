@@ -32,8 +32,8 @@ function createPrismaClient(): PrismaClient {
     );
   }
 
-  const adapter = new PrismaNeon({ connectionString });
-  return new PrismaClient({ adapter });
+    const adapter = new PrismaNeon({ connectionString });
+    return new PrismaClient({ adapter });
 }
 
 // Singleton pattern: reuse PrismaClient across hot reloads in development

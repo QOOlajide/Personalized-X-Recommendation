@@ -1,15 +1,26 @@
-# Personalized X Recommendation Engine
+# Shift
 
-A personalized reimplementation of the X (formerly Twitter) recommendation algorithm, exposing the full ranking pipeline as a **tunable, inspectable, and user-programmable engine**. Built with a synthetic social network of LLM-generated personas, this project lets you experiment with how timelines, trends, and virality emerge under different algorithmic preferences.
+**A personalized feed with exposed, user-tunable ranking** — an educational reimplementation of the X (Twitter) recommendation algorithm where the algorithm _is_ the product.
 
-> **This is not another X clone.** The algorithm _is_ the product. Every post in your feed carries an explanation of why it's there, and you can reshape the entire feed in real time with preference sliders.
+Built with a synthetic social network of LLM-generated personas, Shift lets you experiment with how timelines, trends, and virality emerge under different algorithmic preferences. Every post in your feed carries an explanation of why it's there, and you can reshape the entire feed in real time with preference sliders.
+
+> **Try it live:** [personalized-x-recommendation.vercel.app](https://personalized-x-recommendation.vercel.app/) — Sign up, sign in, and head to `/feed` to see the X-style timeline.
+
+---
+
+## Quick Start (no setup needed)
+
+1. Visit **[personalized-x-recommendation.vercel.app](https://personalized-x-recommendation.vercel.app/)**
+2. **Sign up** with email or OAuth (powered by Clerk — no API keys needed on your end)
+3. **Sign in** and you'll be redirected to `/feed`
+4. Browse the X-style feed with mock posts, explore the sidebar, and check back for upcoming features like algorithm tuning sliders and "Why this post?" explanations
 
 ---
 
 ## What Makes This Different
 
-| Typical X Clone | This Project |
-|-----------------|--------------|
+| Typical X Clone | Shift |
+|-----------------|-------|
 | Feed is `ORDER BY created_at DESC` | 4-stage ranking pipeline: sourcing → scoring → diversity filtering → explainable feed |
 | No algorithm — everyone sees the same thing | 5 weighted scoring factors driven by per-user preference sliders |
 | Empty database until users create content | ~500 LLM-generated personas with distinct writing styles, interests, and engagement patterns |
@@ -97,6 +108,15 @@ All technology decisions are documented in [`docs/adr/001-tech-stack-and-archite
 │   └── migrations/                # Prisma migration history
 ├── src/
 │   ├── app/                       # Next.js App Router pages and layouts
+│   │   ├── (main)/                # Authenticated shell: 3-column X-style layout
+│   │   │   ├── layout.tsx         # Left sidebar + center column + right sidebar
+│   │   │   └── feed/page.tsx      # Timeline with mock posts
+│   │   ├── sign-in/               # Clerk custom sign-in page
+│   │   └── sign-up/               # Clerk custom sign-up page
+│   ├── components/
+│   │   ├── LogoIcon.tsx           # Shift balance-pivot logo (flat + 3D variants)
+│   │   ├── LeftSidebar.tsx        # Nav: Home, Explore, Notifications, Messages, Profile, Settings
+│   │   └── RightSidebar.tsx       # Search, Trending, Who to follow
 │   ├── lib/
 │   │   ├── ai/
 │   │   │   ├── gemini.ts          # Gemini client singleton
@@ -123,6 +143,7 @@ All technology decisions are documented in [`docs/adr/001-tech-stack-and-archite
 │           └── index.ts           # Pipeline orchestrator: generateFeed(userId)
 ├── docs/
 │   ├── Context.md                 # Project requirements and challenges
+│   ├── UI/                        # UI design system plan + branding
 │   ├── adr/                       # Architecture Decision Records
 │   ├── journal.md                 # Development log (bugs, fixes, lessons)
 │   └── tests.md                   # Testing strategy
@@ -134,16 +155,14 @@ All technology decisions are documented in [`docs/adr/001-tech-stack-and-archite
 
 ---
 
-## Prerequisites
+## Local Development
+
+### Prerequisites
 
 - **Node.js 22 LTS** or higher
 - **npm** (ships with Node.js)
 - **Neon account** — Free tier at [neon.tech](https://neon.tech) (serverless PostgreSQL)
 - **Google AI API key** — For Gemini access at [aistudio.google.com](https://aistudio.google.com)
-
----
-
-## Getting Started
 
 ### 1. Clone and Install
 
@@ -160,7 +179,6 @@ Create a `.env` file in the project root with the following variables:
 ```bash
 # Database (Neon PostgreSQL)
 DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
-DIRECT_URL=postgresql://user:password@host/dbname?sslmode=require
 
 # LLM (Google Gemini)
 GEMINI_API_KEY=your-gemini-api-key
@@ -223,21 +241,24 @@ npm run test:run
 - [x] **Persona generation** — Gemini-powered with retry logic, batch generation, handle de-duplication
 - [x] **Content generation** — Tweets, threads, replies, quote tweets, follow graph, engagement seeding
 - [x] **Ranking engine** — All 4 stages implemented and unit tested
+- [x] **Authentication** — Clerk: custom sign-in/sign-up pages, route protection via proxy.ts, user sync webhook
+- [x] **Deployment** — Live on Vercel with Neon PostgreSQL
+- [x] **Core UI shell** — X-style 3-column layout, left nav with Shift logo, right sidebar (trending + who to follow), dark theme matching X's colors
 
 ### In Progress
 
-- [ ] **Authentication** — Clerk: sign-up, sign-in, session management, user sync webhook
+- [ ] **Feed integration** — Wire mock posts to real ranking pipeline, connect to database
+- [ ] **Algorithm tuning panel** — Preference sliders that re-rank the feed in real time
 
 ### Planned
 
-- [ ] **Core UI** — App shell, post cards, home feed (infinite scroll), thread view, compose box
 - [ ] **Explainability UI** — "Why am I seeing this?" cards with factor breakdowns
-- [ ] **Preference controls** — Algorithm tuning sliders, per-topic weights, live re-ranking
-- [ ] **Trends & notifications** — Trending algorithm, explore page, notification system
+- [ ] **Topic interests** — Follow/unfollow topics, intensity controls (Less / Normal / More)
+- [ ] **Feed composition chart** — Visual breakdown of topic distribution in your feed
+- [ ] **Notifications** — GitHub/Discord-style triage with filter pills
 - [ ] **Social features** — Profiles, follow/unfollow, follow suggestions
 - [ ] **Behavioral simulation** — Ongoing persona activity, engagement cascades, interest drift
 - [ ] **Sensitivity/modesty layer** — Presentation-layer CSS blur for media (ranking-neutral)
-- [ ] **Deployment** — Vercel deployment, performance optimization, containerization
 
 ---
 
@@ -260,6 +281,7 @@ npm run test:run
 | Document | Purpose |
 |----------|---------|
 | [`docs/Context.md`](docs/Context.md) | Project requirements and challenges |
+| [`docs/UI/design-system-plan.md`](docs/UI/design-system-plan.md) | UI design system plan and branding guide |
 | [`docs/adr/001-tech-stack-and-architecture.md`](docs/adr/001-tech-stack-and-architecture.md) | All 11 technology and architecture decisions |
 | [`docs/journal.md`](docs/journal.md) | Development log: bugs encountered, fixes applied, lessons learned |
 | [`docs/tests.md`](docs/tests.md) | Testing strategy and conventions |
