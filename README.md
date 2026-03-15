@@ -1,6 +1,10 @@
-# Shift
+<p align="center">
+  <img src="public/shift-logo.svg" alt="Shift logo" width="96" />
+</p>
 
-**A personalized feed with exposed, user-tunable ranking** — an educational reimplementation of the X (Twitter) recommendation algorithm where the algorithm _is_ the product.
+<h1 align="center">Shift</h1>
+
+<p align="center"><strong>A personalized feed with exposed, user-tunable ranking</strong><br/>An educational reimplementation of the X (Twitter) recommendation algorithm where the algorithm <em>is</em> the product.</p>
 
 Built with a synthetic social network of LLM-generated personas, Shift lets you experiment with how timelines, trends, and virality emerge under different algorithmic preferences. Every post in your feed carries an explanation of why it's there, and you can reshape the entire feed in real time with preference sliders.
 
