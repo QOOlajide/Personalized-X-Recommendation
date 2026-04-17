@@ -6,20 +6,20 @@ import { MODELS } from "../gemini";
 // =============================================================================
 
 describe("MODELS", () => {
+  it("has a lite model identifier", () => {
+    expect(MODELS.lite).toBeDefined();
+    expect(typeof MODELS.lite).toBe("string");
+    expect(MODELS.lite.length).toBeGreaterThan(0);
+  });
+
   it("has a flash model identifier", () => {
     expect(MODELS.flash).toBeDefined();
     expect(typeof MODELS.flash).toBe("string");
     expect(MODELS.flash.length).toBeGreaterThan(0);
   });
 
-  it("has a pro model identifier", () => {
-    expect(MODELS.pro).toBeDefined();
-    expect(typeof MODELS.pro).toBe("string");
-    expect(MODELS.pro.length).toBeGreaterThan(0);
-  });
-
-  it("flash and pro are different models", () => {
-    expect(MODELS.flash).not.toBe(MODELS.pro);
+  it("lite and flash are different models", () => {
+    expect(MODELS.lite).not.toBe(MODELS.flash);
   });
 });
 

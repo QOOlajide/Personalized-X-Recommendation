@@ -2,10 +2,8 @@ import { GoogleGenAI } from "@google/genai";
 
 /** Model identifiers — centralised so a rename only touches one file. */
 export const MODELS = {
-  /** Fast, cost-effective generation (personas, tweets, engagement). */
+  lite: "gemini-2.5-flash-lite",
   flash: "gemini-2.5-flash",
-  /** Complex reasoning tasks (if needed in the future). */
-  pro: "gemini-3-pro-preview",
 } as const;
 /**
  * Lazily-initialized Gemini client singleton.
