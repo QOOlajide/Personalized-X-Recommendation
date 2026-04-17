@@ -33,9 +33,49 @@ import type { PersonaConfig } from "./schemas/persona";
 
 const TOPIC_SLUG_LIST = TOPICS.map((t) => `${t.slug} (${t.name})`).join(", ");
 
+const CONTENT_CHAR_LIMIT = 280;
+
+/**
+ * Walk a parsed JSON object and truncate any string `content` fields
+ * that exceed the character limit. Truncation cuts at the last word
+ * boundary before the limit and appends "…".
+ * Returns the number of fields that were truncated.
+ */
+function repairContentFields(obj: unknown): number {
+  let repaired = 0;
+
+  function walk(node: unknown): void {
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+    } else if (node !== null && typeof node === "object") {
+      const record = node as Record<string, unknown>;
+      if (
+        typeof record.content === "string" &&
+        record.content.length > CONTENT_CHAR_LIMIT
+      ) {
+        const truncated = record.content.slice(0, CONTENT_CHAR_LIMIT - 1);
+        const lastSpace = truncated.lastIndexOf(" ");
+        record.content =
+          (lastSpace > CONTENT_CHAR_LIMIT * 0.6
+            ? truncated.slice(0, lastSpace)
+            : truncated) + "…";
+        repaired++;
+      }
+      Object.values(record).forEach(walk);
+    }
+  }
+
+  walk(obj);
+  return repaired;
+}
+
 /**
  * Parse and validate Gemini's JSON response against a Zod schema.
  * Extracted as a helper to avoid repeating error handling in every generator.
+ *
+ * Includes an automatic repair pass: any `content` fields exceeding 280
+ * characters are truncated at a word boundary before validation. This
+ * handles the common case where the LLM slightly overshoots the limit.
  */
 function parseGeminiResponse<T>(text: string | undefined, schema: z.ZodType<T>, label: string): T {
   if (!text) {
@@ -51,6 +91,11 @@ function parseGeminiResponse<T>(text: string | undefined, schema: z.ZodType<T>, 
         `Parse error: ${error instanceof Error ? error.message : String(error)}. ` +
         `Raw (first 500 chars): ${text.slice(0, 500)}`
     );
+  }
+
+  const repaired = repairContentFields(parsed);
+  if (repaired > 0) {
+    console.warn(`  🔧 ${label}: truncated ${repaired} content field(s) to ${CONTENT_CHAR_LIMIT} chars`);
   }
 
   const result = schema.safeParse(parsed);
@@ -82,14 +127,15 @@ Engagement style: ${persona.config.engagementStyle}
 
 Generate exactly ${count} tweets that this persona would realistically post.
 
+HARD CONSTRAINT — every single tweet "content" field MUST be 280 characters or fewer. Count carefully. If a draft exceeds 280 characters, shorten it before including it. This is a strict technical limit that will cause a validation error if violated.
+
 Rules:
-- Each tweet must be max 280 characters
 - Match the persona's writing style exactly (tone, emoji usage, punctuation, capitalization)
 - Cover their interests naturally — not every tweet about the same thing
 - Include a mix: some informative, some opinions, some casual/personal
 - Tag each tweet with 1-3 topic slugs from: ${TOPIC_SLUG_LIST}
 - Make tweets feel authentic, not generic or robotic
-- Vary tweet lengths (some short and punchy, some longer)`;
+- Vary tweet lengths (some short and punchy, some longer — but never over 280 chars)`;
 }
 
 /**
@@ -109,7 +155,7 @@ export async function generateTweets(
   const response = await withRetry(
     () =>
       getGeminiClient().models.generateContent({
-        model: MODELS.flash,
+        model: MODELS.lite,
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -141,8 +187,9 @@ Writing style: ${persona.config.writingStyle}
 
 Generate exactly ${count} thread(s). Each thread is a sequence of 2-5 connected tweets telling a story, explaining a concept, or building an argument.
 
+HARD CONSTRAINT — every single "content" field in every thread post MUST be 280 characters or fewer. Count carefully. If a draft exceeds 280 characters, shorten it before including it. This is a strict technical limit that will cause a validation error if violated.
+
 Rules:
-- Each tweet in a thread must be max 280 characters
 - First tweet should hook the reader (e.g., "Thread 🧵" or a bold claim)
 - Each subsequent tweet builds on the previous one
 - Match the persona's writing style
@@ -167,7 +214,7 @@ export async function generateThreads(
   const response = await withRetry(
     () =>
       getGeminiClient().models.generateContent({
-        model: MODELS.flash,
+        model: MODELS.lite,
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -212,8 +259,9 @@ ${tweetList}
 
 Generate exactly ${count} replies. For each reply, specify which tweet you're replying to (by its index).
 
+HARD CONSTRAINT — every "content" field MUST be 280 characters or fewer. Count carefully. Shorten any draft that exceeds this limit. This is a strict technical limit.
+
 Rules:
-- Each reply must be max 280 characters
 - Replies should feel natural — agree, disagree, add context, joke, or ask a question
 - Match the persona's engagement style
 - Don't reply to every tweet — pick the ones this persona would actually engage with
@@ -241,7 +289,7 @@ export async function generateReplies(
   const response = await withRetry(
     () =>
       getGeminiClient().models.generateContent({
-        model: MODELS.flash,
+        model: MODELS.lite,
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -288,8 +336,9 @@ ${tweetList}
 
 Generate exactly ${count} quote tweet(s). A quote tweet adds commentary on top of the original — it's NOT a reply, it's a repost with added perspective.
 
+HARD CONSTRAINT — every "content" field MUST be 280 characters or fewer. Count carefully. Shorten any draft that exceeds this limit. This is a strict technical limit.
+
 Rules:
-- Each quote tweet must be max 280 characters
 - Add real commentary: agree strongly, disagree, add hot take, expand with insight
 - Don't just repeat or paraphrase the original
 - Match the persona's writing style
@@ -317,7 +366,7 @@ export async function generateQuoteTweets(
   const response = await withRetry(
     () =>
       getGeminiClient().models.generateContent({
-        model: MODELS.flash,
+        model: MODELS.lite,
         contents: prompt,
         config: {
           responseMimeType: "application/json",

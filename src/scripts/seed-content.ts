@@ -30,8 +30,9 @@ const REPLIES_PER_PERSONA = Number(process.env.SEED_REPLIES_PER_PERSONA ?? 2);
 /** Quote tweets per persona */
 const QUOTE_TWEETS_PER_PERSONA = Number(process.env.SEED_QTS_PER_PERSONA ?? 1);
 
-/** Delay between Gemini API calls (ms) to respect rate limits */
-const API_DELAY_MS = Number(process.env.SEED_API_DELAY_MS ?? 1500);
+/** Delay between Gemini API calls (ms) to stay under rate limits.
+ *  Tier 1: ~150 RPM → 1s spacing is safe with headroom. Override via env var. */
+const API_DELAY_MS = Number(process.env.SEED_API_DELAY_MS ?? 1000);
 
 // ---------------------------------------------------------------------------
 // Helpers
