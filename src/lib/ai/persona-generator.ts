@@ -43,43 +43,107 @@ Important: Ensure variety in gender, ethnicity, geography, and personality.`;
 // ---------------------------------------------------------------------------
 
 const BATCH_SIZE = 10;
-const MAX_ATTEMPTS = 3; // Total calls (1 initial + 2 retries)
-const BASE_DELAY_MS = 2_000; // 2s → 4s exponential backoff
+const MAX_ATTEMPTS = 4;
+const BASE_DELAY_MS = 2_000;
+const RATE_LIMIT_FALLBACK_MS = 10_000;
+const SCHEMA_RETRY_LIMIT = 2;
 
 /**
- * Retry helper with exponential backoff for transient API errors.
- * Only retries on 503 (UNAVAILABLE) and 429 (RESOURCE_EXHAUSTED) errors.
- * Non-retryable errors (auth failures, schema errors) fail immediately.
+ * Parse the server-provided retry delay from a 429 error message.
+ * Looks for patterns like "retry in 50.7s" or "retryDelay":"50s".
+ * Returns the delay in ms, or null if not found.
+ */
+export function parseRetryDelay(message: string): number | null {
+  const match = message.match(/retry\s*(?:in|Delay[":\s]*)\s*"?(\d+(?:\.\d+)?)\s*s/i);
+  if (match) {
+    return Math.ceil(parseFloat(match[1]) * 1000);
+  }
+  return null;
+}
+
+/**
+ * Add ±25% jitter to a delay to avoid thundering-herd retries.
+ */
+function addJitter(ms: number): number {
+  const jitter = ms * 0.25 * (2 * Math.random() - 1);
+  return Math.max(1000, Math.round(ms + jitter));
+}
+
+type ErrorCategory = "rate_limit" | "transient" | "schema" | "fatal";
+
+function categorizeError(message: string): ErrorCategory {
+  if (message.includes("429") || message.includes("RESOURCE_EXHAUSTED")) {
+    return "rate_limit";
+  }
+  if (message.includes("503") || message.includes("UNAVAILABLE")) {
+    return "transient";
+  }
+  if (message.includes("did not match schema")) {
+    return "schema";
+  }
+  return "fatal";
+}
+
+/**
+ * Retry helper for Gemini API calls.
+ *
+ * - 503 UNAVAILABLE: exponential backoff (2s → 4s → 8s) with jitter.
+ *   Google treats 503 as transient overload.
+ * - 429 RESOURCE_EXHAUSTED: uses the server-provided retryDelay if
+ *   present in the error; falls back to a conservative delay otherwise.
+ *   429 is a quota/rate-limit signal, not a prompt problem.
+ * - Schema validation failures: retried as application-level errors
+ *   (the LLM produced bad output, worth one more attempt) with a
+ *   separate, smaller retry budget so they don't consume API retries.
+ * - Auth failures, missing keys, etc: fail immediately.
  */
 export async function withRetry<T>(
   fn: () => Promise<T>,
   label: string
 ): Promise<T> {
+  let schemaRetries = 0;
+
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       return await fn();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const isRetryable =
-        message.includes("503") ||
-        message.includes("429") ||
-        message.includes("UNAVAILABLE") ||
-        message.includes("RESOURCE_EXHAUSTED");
+      const category = categorizeError(message);
 
-      if (!isRetryable || attempt === MAX_ATTEMPTS) {
-        throw error;
+      if (category === "fatal") throw error;
+
+      if (category === "schema") {
+        schemaRetries++;
+        if (schemaRetries > SCHEMA_RETRY_LIMIT) throw error;
+        const delayMs = addJitter(BASE_DELAY_MS);
+        console.warn(
+          `  ⚠️  ${label}: schema mismatch (schema retry ${schemaRetries}/${SCHEMA_RETRY_LIMIT}), ` +
+            `retrying in ${(delayMs / 1000).toFixed(1)}s...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        attempt--; // schema retries don't count against the API attempt budget
+        continue;
       }
 
-      const delayMs = BASE_DELAY_MS * 2 ** (attempt - 1);
+      if (attempt === MAX_ATTEMPTS) throw error;
+
+      let delayMs: number;
+      if (category === "rate_limit") {
+        const serverDelay = parseRetryDelay(message);
+        delayMs = serverDelay ?? RATE_LIMIT_FALLBACK_MS;
+        delayMs = addJitter(delayMs);
+      } else {
+        delayMs = addJitter(BASE_DELAY_MS * 2 ** (attempt - 1));
+      }
+
       console.warn(
-        `  ⚠️  ${label}: transient error (attempt ${attempt}/${MAX_ATTEMPTS}), ` +
-          `retrying in ${delayMs / 1000}s...`
+        `  ⚠️  ${label}: ${category} error (attempt ${attempt}/${MAX_ATTEMPTS}), ` +
+          `retrying in ${(delayMs / 1000).toFixed(1)}s...`
       );
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
 
-  // TypeScript exhaustiveness — unreachable, but satisfies the compiler
   throw new Error(`${label}: exhausted all retries`);
 }
 
@@ -104,7 +168,7 @@ export async function generatePersonaBatch(
   const response = await withRetry(
     () =>
       getGeminiClient().models.generateContent({
-        model: MODELS.flash,
+        model: MODELS.lite,
         contents: prompt,
         config: {
           responseMimeType: "application/json",

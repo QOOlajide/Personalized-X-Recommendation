@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { GeneratedPersona } from "../schemas/persona";
 
 // ---------------------------------------------------------------------------
@@ -14,8 +14,8 @@ vi.mock("../gemini", () => ({
     },
   }),
   MODELS: {
-    flash: "gemini-3-flash-preview",
-    pro: "gemini-3-pro-preview",
+    lite: "gemini-2.5-flash-lite",
+    flash: "gemini-2.5-flash",
   },
 }));
 
@@ -24,6 +24,7 @@ import {
   generatePersonaBatch,
   generatePersonas,
   withRetry,
+  parseRetryDelay,
 } from "../persona-generator";
 
 // ---------------------------------------------------------------------------
@@ -58,12 +59,41 @@ function mockValidResponse(personas: GeneratedPersona[]) {
 // withRetry
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// parseRetryDelay
+// ---------------------------------------------------------------------------
+
+describe("parseRetryDelay", () => {
+  it("parses 'retry in 50.7s' from a Gemini 429 error", () => {
+    const msg =
+      'Request failed: 429 RESOURCE_EXHAUSTED. Please retry in 50.7s';
+    expect(parseRetryDelay(msg)).toBe(50_700);
+  });
+
+  it("parses integer seconds", () => {
+    expect(parseRetryDelay("retry in 30s")).toBe(30_000);
+  });
+
+  it("returns null when no retry delay is present", () => {
+    expect(parseRetryDelay("429 RESOURCE_EXHAUSTED")).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// withRetry
+// ---------------------------------------------------------------------------
+
 describe("withRetry", () => {
+  let randomSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.useFakeTimers();
+    // Pin jitter to zero so delays are deterministic in tests
+    randomSpy = vi.spyOn(Math, "random").mockReturnValue(0.5);
   });
 
   afterEach(() => {
+    randomSpy.mockRestore();
     vi.useRealTimers();
   });
 
@@ -76,14 +106,14 @@ describe("withRetry", () => {
     expect(fn).toHaveBeenCalledOnce();
   });
 
-  it("retries on 503 UNAVAILABLE and succeeds on second attempt", async () => {
+  it("retries on 503 UNAVAILABLE with exponential backoff + jitter", async () => {
     const fn = vi
       .fn()
       .mockRejectedValueOnce(new Error("503 UNAVAILABLE"))
       .mockResolvedValueOnce("recovered");
 
     const promise = withRetry(fn, "test");
-    // Advance past the first retry delay (2s)
+    // With Math.random()=0.5, jitter factor is 0 → delay stays at 2s
     await vi.advanceTimersByTimeAsync(2_000);
 
     const result = await promise;
@@ -91,10 +121,44 @@ describe("withRetry", () => {
     expect(fn).toHaveBeenCalledTimes(2);
   });
 
-  it("retries on 429 RESOURCE_EXHAUSTED", async () => {
+  it("retries on 429 with fallback delay when server provides no retryDelay", async () => {
     const fn = vi
       .fn()
       .mockRejectedValueOnce(new Error("429 RESOURCE_EXHAUSTED"))
+      .mockResolvedValueOnce("ok");
+
+    const promise = withRetry(fn, "test");
+    // Fallback is 10s; with zero-jitter Math.random it stays 10s
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    const result = await promise;
+    expect(result).toBe("ok");
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries on 429 using server-provided retry delay", async () => {
+    const fn = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new Error("429 RESOURCE_EXHAUSTED. Please retry in 30s")
+      )
+      .mockResolvedValueOnce("ok");
+
+    const promise = withRetry(fn, "test");
+    // Parsed 30s from error + zero jitter → 30s
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    const result = await promise;
+    expect(result).toBe("ok");
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries schema failures on a separate budget (doesn't count as API attempt)", async () => {
+    const fn = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new Error("Tweets @user: Gemini JSON did not match schema.")
+      )
       .mockResolvedValueOnce("ok");
 
     const promise = withRetry(fn, "test");
@@ -103,6 +167,22 @@ describe("withRetry", () => {
     const result = await promise;
     expect(result).toBe("ok");
     expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it("throws after exhausting the schema retry budget (2 retries)", async () => {
+    const fn = vi
+      .fn()
+      .mockRejectedValue(
+        new Error("Gemini JSON did not match schema.")
+      );
+
+    const promise = withRetry(fn, "test");
+    const rejectAssertion = expect(promise).rejects.toThrow("did not match schema");
+    await vi.advanceTimersByTimeAsync(2_000);
+    await vi.advanceTimersByTimeAsync(2_000);
+    await rejectAssertion;
+    // 1 initial + 2 schema retries = 3 calls
+    expect(fn).toHaveBeenCalledTimes(3);
   });
 
   it("does NOT retry on non-retryable errors (e.g. auth failure)", async () => {
@@ -114,37 +194,36 @@ describe("withRetry", () => {
     expect(fn).toHaveBeenCalledOnce();
   });
 
-  it("throws after exhausting all attempts", async () => {
+  it("throws after exhausting all API attempts on 503", async () => {
     const fn = vi.fn().mockRejectedValue(new Error("503 UNAVAILABLE"));
 
     const promise = withRetry(fn, "test");
-    // Advance through retry delays: 2s + 4s
+    const rejectAssertion = expect(promise).rejects.toThrow("503 UNAVAILABLE");
+    // With zero-jitter: 2s, 4s, 8s
     await vi.advanceTimersByTimeAsync(2_000);
     await vi.advanceTimersByTimeAsync(4_000);
-
-    await expect(promise).rejects.toThrow("503 UNAVAILABLE");
-    // 3 total attempts (1 initial + 2 retries)
-    expect(fn).toHaveBeenCalledTimes(3);
+    await vi.advanceTimersByTimeAsync(8_000);
+    await rejectAssertion;
+    expect(fn).toHaveBeenCalledTimes(4);
   });
 
-  it("uses exponential backoff delays (2s, 4s)", async () => {
+  it("logs correct category and delay in warning messages", async () => {
     const fn = vi.fn().mockRejectedValue(new Error("503 UNAVAILABLE"));
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const promise = withRetry(fn, "batch");
+    const rejectAssertion = expect(promise).rejects.toThrow("503");
 
-    // After first failure, logs retry in 2s
     await vi.advanceTimersByTimeAsync(2_000);
-    expect(warnSpy).toHaveBeenCalledTimes(1);
-    expect(warnSpy.mock.calls[0][0]).toContain("2s");
-
-    // After second failure, logs retry in 4s
-    await vi.advanceTimersByTimeAsync(4_000);
     expect(warnSpy).toHaveBeenCalledTimes(2);
-    expect(warnSpy.mock.calls[1][0]).toContain("4s");
+    expect(warnSpy.mock.calls[0][0]).toContain("transient error");
+    expect(warnSpy.mock.calls[1][0]).toContain("transient error");
 
-    // Third attempt also fails → rejects
-    await expect(promise).rejects.toThrow("503");
+    await vi.advanceTimersByTimeAsync(4_000);
+    expect(warnSpy).toHaveBeenCalledTimes(3);
+
+    await vi.advanceTimersByTimeAsync(8_000);
+    await rejectAssertion;
 
     warnSpy.mockRestore();
   });
@@ -170,14 +249,14 @@ describe("generatePersonaBatch", () => {
     expect(result[1].handle).toBe("sara_writes");
   });
 
-  it("calls Gemini with the flash model", async () => {
+  it("calls Gemini with the lite model", async () => {
     mockValidResponse([makePersona("test_user")]);
 
     await generatePersonaBatch(1);
 
     expect(mockGenerateContent).toHaveBeenCalledOnce();
     const callArgs = mockGenerateContent.mock.calls[0][0];
-    expect(callArgs.model).toBe("gemini-3-flash-preview");
+    expect(callArgs.model).toBe("gemini-2.5-flash-lite");
   });
 
   it("requests JSON response format", async () => {
