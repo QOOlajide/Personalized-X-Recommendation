@@ -26,7 +26,9 @@
 
 ---
 
-## T14 — Page-Level Auth Redirect vs. Conditional Navbar for Signed-In Users
+## T14 — Page-Level Auth Redirect vs. Conditional Navbar for Signed-In Users — SUPERSEDED
+
+> **Superseded (2026-06-19):** Clerk was removed (ADR D5a), so there is no "signed-in" state and no auth redirect on the landing page anymore. The landing page is now a plain Server Component and the Navbar has a single "Open the feed" CTA. Retained for history.
 
 **Context:** Authenticated users on `/` saw auth buttons that looped (Clerk detected the session and bounced them back). We needed to handle the signed-in-on-landing-page case.
 

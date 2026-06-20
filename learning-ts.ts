@@ -18,3 +18,7 @@ function isPopular(likeCount: number): boolean {
 const greeting: string = greetUser("John");
 const totalLikes: number = addLikes(likeCount, 6);
 const isPopulars: boolean = isPopular(likeCount);
+
+const appName = "Shift";
+const appDescription = "A personalized feed with exposed, user-tunable ranking";
+console.log(`Welcome to ${appName}, ${appDescription}`);

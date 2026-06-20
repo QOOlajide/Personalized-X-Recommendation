@@ -11,19 +11,13 @@ export function Navbar() {
           <span className="text-sm font-semibold">Shift</span>
         </Link>
 
-        {/* Right: Auth buttons */}
+        {/* Right: enter the app — no account required */}
         <div className="flex items-center gap-3">
           <Link
-            href="/sign-in"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-150"
-          >
-            Log in
-          </Link>
-          <Link
-            href="/sign-up"
+            href="/feed"
             className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 active:bg-primary/80 transition-colors duration-150"
           >
-            Sign up
+            Open the feed
           </Link>
         </div>
       </div>

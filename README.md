@@ -8,16 +8,16 @@
 
 Built with a synthetic social network of LLM-generated personas, Shift lets you experiment with how timelines, trends, and virality emerge under different algorithmic preferences. Every post in your feed carries an explanation of why it's there, and you can reshape the entire feed in real time with preference sliders.
 
-> **Try it live:** [personalized-x-recommendation.vercel.app](https://personalized-x-recommendation.vercel.app/) — Sign up, sign in, and head to `/feed` to see the X-style timeline.
+> **Try it live:** [personalized-x-recommendation.vercel.app](https://personalized-x-recommendation.vercel.app/) — No sign-up. Just open `/feed` and start tuning the algorithm.
 
 ---
 
 ## Quick Start (no setup needed)
 
 1. Visit **[personalized-x-recommendation.vercel.app](https://personalized-x-recommendation.vercel.app/)**
-2. **Sign up** with email or OAuth (powered by Clerk — no API keys needed on your end)
-3. **Sign in** and you'll be redirected to `/feed`
-4. Browse the X-style feed with mock posts, explore the sidebar, and check back for upcoming features like algorithm tuning sliders and "Why this post?" explanations
+2. Click **Open the feed** — no account, no sign-up. You're in as an anonymous guest (identified by a cookie, so your tuning sticks across visits)
+3. Move the **algorithm sliders** and watch the timeline re-rank live
+4. Explore the sidebar and the "Why this post?" hints on each post
 
 ---
 
@@ -92,7 +92,7 @@ Changes take effect immediately — the feed re-ranks live as sliders move.
 | Framework | Next.js (App Router) | 16.1.6 |
 | Database | Neon Serverless PostgreSQL | 16+ |
 | ORM | Prisma | 7.3.0 |
-| Auth | Clerk | 7.x |
+| Identity | Anonymous guest (cookie-based) | — |
 | Styling | Tailwind CSS | 4.0 |
 | Components | shadcn/ui | 3.x |
 | State | Zustand | 5.x |
@@ -112,16 +112,20 @@ All technology decisions are documented in [`docs/adr/001-tech-stack-and-archite
 │   └── migrations/                # Prisma migration history
 ├── src/
 │   ├── app/                       # Next.js App Router pages and layouts
-│   │   ├── (main)/                # Authenticated shell: 3-column X-style layout
+│   │   ├── (main)/                # App shell: 3-column X-style layout
 │   │   │   ├── layout.tsx         # Left sidebar + center column + right sidebar
-│   │   │   └── feed/page.tsx      # Timeline with mock posts
-│   │   ├── sign-in/               # Clerk custom sign-in page
-│   │   └── sign-up/               # Clerk custom sign-up page
+│   │   │   └── feed/page.tsx      # Live, re-rankable timeline
+│   │   └── actions/               # Server Actions (preference read/write, live preview)
 │   ├── components/
 │   │   ├── LogoIcon.tsx           # Shift balance-pivot logo (flat + 3D variants)
-│   │   ├── LeftSidebar.tsx        # Nav: Home, Explore, Notifications, Messages, Profile, Settings
-│   │   └── RightSidebar.tsx       # Search, Trending, Who to follow
+│   │   ├── LeftSidebar.tsx        # Nav + guest identity chip
+│   │   ├── RightSidebar.tsx       # Search, Trending, Who to follow
+│   │   ├── post/PostCard.tsx      # Reusable timeline post card
+│   │   └── feed/                  # FeedExperience + TuningPanel (live slider UI)
+│   ├── stores/                    # Zustand stores (feed items + draft/saved weights)
+│   ├── proxy.ts                   # Middleware: mints the anonymous guestId cookie
 │   ├── lib/
+│   │   ├── auth/viewer.ts         # Resolve guest viewer + lazy User-row creation
 │   │   ├── ai/
 │   │   │   ├── gemini.ts          # Gemini client singleton
 │   │   │   ├── persona-generator.ts  # LLM persona generation
@@ -138,6 +142,8 @@ All technology decisions are documented in [`docs/adr/001-tech-stack-and-archite
 │   │   ├── seed-personas.ts       # Generate and insert personas via Gemini
 │   │   └── seed-content.ts        # Full content pipeline: topics → follows → content → engagement
 │   └── services/
+│       ├── feed/get-feed.ts       # Feed data-access: pipeline output → UI-ready items
+│       ├── preferences/           # Preference reads (algorithm weights + topic catalog)
 │       └── ranking/
 │           ├── types.ts           # Shared types (CandidatePost, ScoredPost, FeedPost, etc.)
 │           ├── candidate-sourcing.ts  # Stage 1: in-network + out-of-network sourcing
@@ -187,10 +193,10 @@ DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
 # LLM (Google Gemini)
 GEMINI_API_KEY=your-gemini-api-key
 
-# Auth (Clerk) — keyless mode works without these, but needed for production
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
-CLERK_SECRET_KEY=sk_test_...
-CLERK_WEBHOOK_SECRET=whsec_...
+# Identity (optional) — the app is login-free; visitors are anonymous guests
+# identified by a cookie. Optionally pin the fallback persona for cookieless
+# requests (defaults to the first persona in the DB).
+# DEMO_USER_ID=
 
 # Seeder tuning (optional — defaults shown)
 SEED_PERSONA_COUNT=20
@@ -245,20 +251,18 @@ npm run test:run
 - [x] **Persona generation** — Gemini-powered with retry logic, batch generation, handle de-duplication
 - [x] **Content generation** — Tweets, threads, replies, quote tweets, follow graph, engagement seeding
 - [x] **Ranking engine** — 4-stage heuristic pipeline implemented and unit tested (ML upgrade planned — see below)
-- [x] **Authentication** — Clerk: custom sign-in/sign-up pages, route protection via proxy.ts, user sync webhook
+- [x] **Login-free identity** — Anonymous, cookie-based guests (no sign-up). Each visitor gets a stable identity and their own persisted algorithm tuning; a `User` row is created lazily only on first save
+- [x] **Feed integration** — Feed wired to the real ranking pipeline via `getFeedForUser`, connected to the database
+- [x] **Algorithm tuning panel** — Live preference sliders that re-rank the feed in real time (transient preview + persisted save)
 - [x] **Deployment** — Live on Vercel with Neon PostgreSQL
 - [x] **Core UI shell** — X-style 3-column layout, left nav with Shift logo, right sidebar (trending + who to follow), dark theme matching X's colors
-- [x] **Marketing landing page** — 6-section page (Hero, Features, How It Works, Audience, Open Source, Final CTA) with Motion animations, Navbar with auth flow, server-side redirect for authenticated users
+- [x] **Marketing landing page** — 6-section page (Hero, Features, How It Works, Audience, Open Source, Final CTA) with Motion animations
 
 ### Next Up
 
-- [ ] **Feed integration** — Wire mock posts to real ranking pipeline, connect to database
 - [ ] **ML ranking model** — Replace heuristic scoring (Stage 2) with a trained model for non-linear signal capture while preserving explainability
-- [ ] **Algorithm tuning panel** — Preference sliders that re-rank the feed in real time
-
-### Planned
-
-- [ ] **Explainability UI** — "Why am I seeing this?" cards with factor breakdowns
+- [ ] **Explainability UI** — "Why am I seeing this?" cards with factor breakdowns (data already flows through `FeedItem.factors`)
+- [ ] **Topic interest sliders** — Per-topic weight controls wired to the existing `updateTopicPreference` action
 - [ ] **Topic interests** — Follow/unfollow topics, intensity controls (Less / Normal / More)
 - [ ] **Feed composition chart** — Visual breakdown of topic distribution in your feed
 - [ ] **Notifications** — GitHub/Discord-style triage with filter pills
@@ -273,7 +277,7 @@ npm run test:run
 
 2. **User-programmable algorithm** — Preference sliders don't just filter — they change the mathematical weights in the scoring function. This is the core differentiator from a standard social media app.
 
-3. **Synthetic-first, real-user-compatible** — The network starts populated with LLM personas. Real users sign up and interact _alongside_ personas, so the feed is never empty.
+3. **Synthetic-first, zero-friction** — The network starts populated with LLM personas. Visitors interact _alongside_ personas as anonymous cookie-based guests (no sign-up), so the feed is never empty and there's nothing between a visitor and the algorithm.
 
 4. **Anti-filter-bubble by design** — Diversity filtering (Stage 3) actively prevents the algorithm from creating echo chambers through author caps, topic saturation limits, and exploration injection.
 

@@ -1,5 +1,3 @@
-import { auth } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
 import { Navbar } from './_components/Navbar';
 import { Hero } from './_components/Hero';
 import { Features } from './_components/Features';
@@ -11,10 +9,7 @@ import { FinalCta } from './_components/FinalCta';
 const GITHUB_URL =
   'https://github.com/QOOlajide/Personalized-X-Recommendation';
 
-export default async function LandingPage() {
-  const { userId } = await auth();
-  if (userId) redirect('/feed');
-
+export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />

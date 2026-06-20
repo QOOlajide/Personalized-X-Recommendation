@@ -26,6 +26,40 @@ import type {
 import { DEFAULT_PIPELINE_CONFIG, DEFAULT_PREFERENCES } from "./types";
 
 // ---------------------------------------------------------------------------
+// Preference Overrides (live preview)
+// ---------------------------------------------------------------------------
+
+/**
+ * Transient preference overrides applied on top of the user's stored
+ * preferences without persisting them. Powers the "move a slider and
+ * watch the feed re-rank" preview before the user commits a change.
+ */
+export interface PreferenceOverrides {
+  preferences?: Partial<UserPreferences>;
+  topicWeights?: TopicWeights;
+}
+
+/**
+ * Merge transient overrides onto a loaded context. Pure function so the
+ * override semantics can be unit-tested without touching the database.
+ *
+ * Algorithm weights are merged field-by-field (partial override allowed);
+ * topic weights are merged key-by-key (override wins per slug).
+ */
+export function applyOverrides(
+  ctx: RankingContext,
+  overrides?: PreferenceOverrides
+): RankingContext {
+  if (!overrides) return ctx;
+
+  return {
+    ...ctx,
+    preferences: { ...ctx.preferences, ...overrides.preferences },
+    topicWeights: { ...ctx.topicWeights, ...overrides.topicWeights },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Context Loader
 // ---------------------------------------------------------------------------
 
@@ -93,16 +127,19 @@ export interface FeedResult {
  *
  * @param userId - The authenticated user requesting their feed.
  * @param config - Optional pipeline config overrides.
+ * @param overrides - Optional transient preference overrides (live preview).
  * @returns Feed posts, ranking explanations, and pipeline stats.
  */
 export async function generateFeed(
   userId: string,
-  config: PipelineConfig = DEFAULT_PIPELINE_CONFIG
+  config: PipelineConfig = DEFAULT_PIPELINE_CONFIG,
+  overrides?: PreferenceOverrides
 ): Promise<FeedResult> {
   const startMs = performance.now();
 
-  // Load user context (preferences, follows, topic weights)
-  const ctx = await loadRankingContext(userId);
+  // Load user context (preferences, follows, topic weights), then apply
+  // any transient overrides for live preview without persisting them.
+  const ctx = applyOverrides(await loadRankingContext(userId), overrides);
 
   // Stage 1: Candidate Sourcing
   const candidates = await sourceCandidates(ctx, config);

@@ -11,7 +11,6 @@ import {
   Settings,
   Feather,
 } from 'lucide-react';
-import { UserButton } from '@clerk/nextjs';
 import { LogoIcon } from './LogoIcon';
 
 const NAV_ITEMS = [
@@ -82,18 +81,17 @@ export function LeftSidebar() {
         </button>
       </div>
 
-      {/* Bottom: user account widget */}
+      {/* Bottom: guest identity chip (no account required) */}
       <div className="flex items-center justify-center gap-3 rounded-full p-3 transition-colors hover:bg-accent xl:justify-start">
-        <UserButton
-          showName
-          appearance={{
-            elements: {
-              avatarBox: 'h-10 w-10',
-              userButtonOuterIdentifier: 'hidden xl:block text-sm font-semibold truncate max-w-[140px]',
-              userButtonBox: 'flex-row-reverse',
-            },
-          }}
-        />
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold">
+          G
+        </div>
+        <div className="hidden min-w-0 flex-col xl:flex">
+          <span className="truncate text-sm font-semibold">Guest</span>
+          <span className="truncate text-xs text-muted-foreground">
+            Browsing without an account
+          </span>
+        </div>
       </div>
     </aside>
   );

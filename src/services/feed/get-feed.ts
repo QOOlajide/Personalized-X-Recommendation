@@ -8,7 +8,7 @@
 
 import { db } from "../../lib/db";
 import { generateFeed } from "../ranking";
-import type { FeedResult } from "../ranking";
+import type { FeedResult, PreferenceOverrides } from "../ranking";
 import type { FeedPost, ScoringFactors } from "../ranking/types";
 
 // ---------------------------------------------------------------------------
@@ -128,9 +128,15 @@ const UNKNOWN_AUTHOR: FeedAuthor = {
  *
  * Returns UI-ready `FeedItem[]` or an empty array if the pipeline
  * produces no results (e.g., no posts in the database yet).
+ *
+ * Pass `overrides` to re-rank against transient (unsaved) preferences —
+ * the mechanism behind live slider previews.
  */
-export async function getFeedForUser(userId: string): Promise<FeedResponse> {
-  const result = await generateFeed(userId);
+export async function getFeedForUser(
+  userId: string,
+  overrides?: PreferenceOverrides
+): Promise<FeedResponse> {
+  const result = await generateFeed(userId, undefined, overrides);
 
   if (result.feed.length === 0) {
     return { items: [], meta: result.meta };

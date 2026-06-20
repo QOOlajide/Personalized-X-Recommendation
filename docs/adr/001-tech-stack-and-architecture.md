@@ -108,6 +108,8 @@ This ADR captures all major technology and architecture decisions made before im
 
 ### D5: Clerk for Authentication (revised from BetterAuth)
 
+> **⚠️ SUPERSEDED (2026-06-19) — see D5a below.** Clerk was removed entirely in favor of a login-free, anonymous cookie-based identity model. Sign-up was the single biggest source of friction for an app whose whole value is "open it and play with the algorithm." The decision record below is retained for history.
+
 **Decision:** Use Clerk (hosted SaaS) for user authentication. Originally BetterAuth was chosen, but was replaced before any auth code was written.
 
 **Alternatives Considered:**
@@ -136,6 +138,26 @@ This ADR captures all major technology and architecture decisions made before im
 - User data lives in two places (Clerk + Prisma) — webhook keeps them in sync
 - Ejecting to self-hosted auth later requires ~2–3 days of migration work
 - `Session`, `Account`, `Verification` models removed from Prisma schema (Clerk handles these)
+
+---
+
+### D5a: Login-free Anonymous Identity (supersedes D5)
+
+**Decision (2026-06-19):** Remove Clerk entirely. The app has no sign-up and no sign-in. Every visitor is an anonymous guest identified by a `guestId` cookie minted in `proxy.ts`.
+
+**Why:**
+- The product's value is "open it and tune the algorithm." Any auth gate — even a one-click one — is friction that costs visitors before they reach the payoff.
+- Personalization does **not** require accounts. A stable per-visitor id (the cookie) is enough to key `AlgorithmPreference` / `UserTopicPreference` rows, so the Phase 5 tuning feature is fully preserved.
+
+**How it works:**
+- `proxy.ts` middleware mints a `guestId` cookie on first request (the one place a cookie can be set *and* read on the same render).
+- `src/lib/auth/viewer.ts` resolves the viewer from the cookie (falling back to a demo persona for cookieless requests).
+- A `User` row is created **lazily** (`ensureGuestUser`) only when a guest first *saves* a preference — browsing needs no row, since the ranking pipeline falls back to defaults.
+
+**Consequences:**
+- Removed: `@clerk/nextjs`, `svix`, `ClerkProvider`, Clerk middleware, sign-in/sign-up pages, the Clerk webhook, and the Clerk cursor rules.
+- No vendor dependency, no dual data residency, no webhook sync to drift.
+- Trade-off: no cross-device identity (cookie is per-browser) and no durable accounts. Acceptable for a portfolio/demo whose goal is frictionless exploration. If real accounts are ever needed, auth can be layered back on top of the same `User` table.
 
 ---
 
@@ -237,7 +259,7 @@ This ADR captures all major technology and architecture decisions made before im
 
 **Decision:** Do not enable Neon Auth. Neon is used strictly as "just Postgres."
 
-**Rationale:** We use Clerk (D5) for authentication. Enabling Neon Auth would create a redundant, conflicting auth layer. Neon's only role is database hosting.
+**Rationale:** The app uses a login-free anonymous identity model (D5a), not a hosted auth provider. Enabling Neon Auth would add an unnecessary auth layer. Neon's only role is database hosting.
 
 ---
 
@@ -272,7 +294,8 @@ This ADR captures all major technology and architecture decisions made before im
 | D2 | Framework | Next.js 16 App Router |
 | D3 | ORM | Prisma 7 |
 | D4 | Database hosting | Neon serverless PostgreSQL |
-| D5 | Authentication | Clerk (revised from BetterAuth) |
+| D5 | Authentication | ~~Clerk (revised from BetterAuth)~~ — superseded by D5a |
+| D5a | Identity | Login-free anonymous cookie-based guests |
 | D6 | LLM provider | Gemini 3 Flash / Pro |
 | D7 | Ranking approach | Heuristic 4-stage pipeline |
 | D8 | Modesty policy | Presentation-layer CSS blur (ranking-neutral) |

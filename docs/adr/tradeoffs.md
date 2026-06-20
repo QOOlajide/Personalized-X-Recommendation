@@ -237,7 +237,9 @@
 
 ---
 
-## T11 — Clerk (Managed Auth) vs. BetterAuth (Self-Hosted) — REVISED
+## T11 — Clerk (Managed Auth) vs. BetterAuth (Self-Hosted) — SUPERSEDED
+
+> **Superseded (2026-06-19):** Both options were abandoned. The app removed authentication entirely in favor of a login-free, anonymous cookie-based identity (see ADR D5a). The trade-off analysis below is retained for history; the "needs authentication" premise no longer holds.
 
 **Context:** The platform needs user authentication (sign up, sign in, sessions) for real users to interact with the synthetic network.
 
