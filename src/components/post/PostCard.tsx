@@ -55,7 +55,7 @@ export function PostCard({ post }: { post: FeedItem }) {
           <button
             type="button"
             aria-label="More options"
-            className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+            className="post-icon-action post-action--sky"
           >
             <MoreHorizontal className="h-4 w-4" />
           </button>
@@ -80,43 +80,43 @@ export function PostCard({ post }: { post: FeedItem }) {
           <button
             type="button"
             aria-label={`${formatCompactNumber(post.replyCount)} replies`}
-            className="group inline-flex items-center gap-1 rounded-full px-2 py-1 transition-colors hover:bg-primary/10 hover:text-primary"
+            className="post-action post-action--sky inline-flex items-center gap-1 rounded-full px-2 py-1 text-[13px]"
           >
-            <MessageCircle className="h-4 w-4 transition-colors group-hover:text-primary" />
-            <span className="text-[13px]">{formatCompactNumber(post.replyCount)}</span>
+            <MessageCircle className="h-4 w-4" />
+            <span>{formatCompactNumber(post.replyCount)}</span>
           </button>
 
           <button
             type="button"
             aria-label={`${formatCompactNumber(post.repostCount)} reposts`}
-            className="group inline-flex items-center gap-1 rounded-full px-2 py-1 transition-colors hover:bg-emerald-500/10 hover:text-emerald-500"
+            className="post-action post-action--emerald inline-flex items-center gap-1 rounded-full px-2 py-1 text-[13px]"
           >
-            <Repeat2 className="h-4 w-4 transition-colors group-hover:text-emerald-500" />
-            <span className="text-[13px]">{formatCompactNumber(post.repostCount)}</span>
+            <Repeat2 className="h-4 w-4" />
+            <span>{formatCompactNumber(post.repostCount)}</span>
           </button>
 
           <button
             type="button"
             aria-label={`${formatCompactNumber(post.likeCount)} likes`}
-            className="group inline-flex items-center gap-1 rounded-full px-2 py-1 transition-colors hover:bg-pink-500/10 hover:text-pink-500"
+            className="post-action post-action--pink inline-flex items-center gap-1 rounded-full px-2 py-1 text-[13px]"
           >
-            <Heart className="h-4 w-4 transition-colors group-hover:text-pink-500" />
-            <span className="text-[13px]">{formatCompactNumber(post.likeCount)}</span>
+            <Heart className="h-4 w-4" />
+            <span>{formatCompactNumber(post.likeCount)}</span>
           </button>
 
           <button
             type="button"
             aria-label={`${formatCompactNumber(post.viewCount)} views`}
-            className="group inline-flex items-center gap-1 rounded-full px-2 py-1 transition-colors hover:bg-primary/10 hover:text-primary"
+            className="post-action post-action--sky inline-flex items-center gap-1 rounded-full px-2 py-1 text-[13px]"
           >
-            <BarChart2 className="h-4 w-4 transition-colors group-hover:text-primary" />
-            <span className="text-[13px]">{formatCompactNumber(post.viewCount)}</span>
+            <BarChart2 className="h-4 w-4" />
+            <span>{formatCompactNumber(post.viewCount)}</span>
           </button>
 
           <button
             type="button"
             aria-label="Share post"
-            className="rounded-full p-1 transition-colors hover:bg-primary/10 hover:text-primary"
+            className="post-icon-action post-action--sky"
           >
             <Share className="h-4 w-4" />
           </button>

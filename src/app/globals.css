@@ -124,3 +124,50 @@
     @apply bg-background text-foreground;
   }
 }
+
+.post-action,
+.post-icon-action {
+  --post-action-color: var(--color-sky-500);
+  color: var(--muted-foreground);
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    transform 150ms ease;
+}
+
+.post-action svg,
+.post-icon-action svg {
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+.post-action:hover,
+.post-icon-action:hover {
+  color: var(--post-action-color);
+}
+
+.post-action:hover {
+  background-color: color-mix(in oklab, var(--post-action-color) 10%, transparent);
+}
+
+.post-icon-action:hover {
+  background-color: color-mix(in oklab, var(--post-action-color) 10%, transparent);
+}
+
+.post-action:active,
+.post-icon-action:active {
+  transform: scale(0.97);
+}
+
+.post-action--sky {
+  --post-action-color: var(--color-sky-500);
+}
+
+.post-action--emerald {
+  --post-action-color: var(--color-emerald-500);
+}
+
+.post-action--pink {
+  --post-action-color: var(--color-pink-500);
+}
